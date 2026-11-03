@@ -1,122 +1,153 @@
 <?php
 
 use App\Enums\Role;
-use App\Enums\TaskStatus;
-use App\Models\Institution;
+use App\Http\Controllers\DemoController;
+use App\Models\Contractor;
+use App\Models\ContractorDocument;
+use App\Models\CsmsCertificate;
 use App\Models\Membership;
-use App\Models\Task;
+use App\Models\Owner;
 use App\Models\User;
-use App\Services\EvidenceService;
-use App\Services\ExecutiveDashboard;
-use App\Services\InstrumentImporter;
-use App\Services\ReadinessCalculator;
-use App\Support\CurrentInstitution;
-use Database\Seeders\DemoSeeder;
-use Database\Seeders\UinSukaDemoSeeder;
-use Database\Seeders\UnjDemoSeeder;
+use App\Services\MobilizationService;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
 
 /*
-| Perintah operasional Akredia. Cukup satu cron per menit. Di cPanel pilih "Once Per Minute"
+| Perintah operasional Rekana. Cukup satu cron per menit. Di cPanel pilih "Once Per Minute"
 | lalu isi kolom Command (tanpa bintang jadwal):
-|   cd /home/USER/akredia && php artisan schedule:run >> /dev/null 2>&1
+|   cd /home/USER/rekana && php artisan schedule:run >> /dev/null 2>&1
 */
 
-$institutions = fn (?string $slug) => Institution::query()->where('is_active', true)->when($slug, fn ($q) => $q->where('slug', $slug))->get();
-
-Artisan::command('akredia:create-admin {email?} {--name=} {--password=}', function (?string $email = null) {
-    $email ??= $this->ask('Email administrator platform');
-    $password = $this->option('password') ?: $this->secret('Kata sandi (minimal 10 karakter)');
+Artisan::command('rekana:owner {slug : alamat singkat, mis. ajinomoto-mojokerto} {--name=} {--email=} {--password=} {--admin-name=}', function (string $slug) {
+    // Membuat perusahaan owner (pelanggan) beserta administrator pertamanya.
+    $name = $this->option('name') ?: $this->ask('Nama perusahaan owner');
+    $email = $this->option('email') ?: $this->ask('Surel administrator owner');
+    $password = $this->option('password') ?: $this->secret('Kata sandi administrator (minimal 10 karakter)');
 
     if (strlen((string) $password) < 10) {
         return $this->error('Kata sandi minimal 10 karakter.');
     }
 
-    $user = User::updateOrCreate(['email' => $email], [
-        'name' => $this->option('name') ?: 'Administrator Akredia', 'password' => $password,
-        'is_platform_admin' => true, 'is_active' => true,
-    ]);
-    $this->info("Administrator platform siap: {$user->email} (masuk di /platform)");
-})->purpose('Buat atau perbarui akun administrator platform');
+    $owner = Owner::firstOrCreate(['slug' => $slug], ['name' => $name, 'is_active' => true]);
+    $user = User::updateOrCreate(['email' => $email], ['name' => $this->option('admin-name') ?: 'Administrator '.$owner->name, 'password' => $password, 'is_active' => true]);
+    Membership::withoutGlobalScopes()->updateOrCreate(['owner_id' => $owner->id, 'user_id' => $user->id], ['role' => Role::Admin->value, 'is_active' => true]);
 
-Artisan::command('akredia:instrument {--force : Jalankan tanpa konfirmasi}', function () {
-    // Menyelaraskan Pustaka Instrumen dengan database/data/iapt41.php (ambang metrik dan penanda syarat perlu).
-    if (! $this->option('force') && ! $this->confirm('Deskriptor, syarat perlu, dan ambang metrik yang diubah lewat Pustaka Instrumen akan ditimpa data bawaan. Lanjutkan?')) {
-        return;
+    $this->info("Owner siap: {$owner->name}. Masuk di ".url("/app/{$owner->slug}")." dengan {$user->email}.");
+})->purpose('Buat perusahaan owner baru beserta administrator pertamanya');
+
+$removeDemo = function (Owner $owner) {
+    $contractorIds = DB::table('contractor_registrations')->where('owner_id', $owner->id)->pluck('contractor_id');
+    $userIds = Membership::withoutGlobalScopes()->where('owner_id', $owner->id)->pluck('user_id');
+    $owner->delete();
+
+    // Rekanan contoh yang tidak lagi terdaftar di owner mana pun ikut dihapus beserta berkasnya.
+    $orphans = Contractor::whereIn('id', $contractorIds)->whereNotExists(fn ($q) => $q->from('contractor_registrations')->whereColumn('contractor_registrations.contractor_id', 'contractors.id'))->get();
+    foreach ($orphans as $contractor) {
+        $userIds = $userIds->merge(DB::table('contractor_users')->where('contractor_id', $contractor->id)->pluck('user_id'));
+        Storage::disk('local')->delete(ContractorDocument::where('contractor_id', $contractor->id)->whereNotNull('file_path')->pluck('file_path')->all());
+        $contractor->delete();
     }
 
-    app(InstrumentImporter::class)->seed();
-    $this->info('Pustaka Instrumen IAPT 4.1 diperbarui. Jalankan akredia:snapshot agar proyeksi dihitung ulang.');
-})->purpose('Perbarui Pustaka Instrumen IAPT 4.1 dari data bawaan aplikasi');
+    // Akun demo yang tidak lagi menjadi anggota owner atau rekanan mana pun.
+    User::whereIn('id', $userIds->unique())->where('email', 'like', '%rekana.test')->where('is_platform_admin', false)
+        ->whereDoesntHave('memberships')->whereNotExists(fn ($q) => $q->from('contractor_users')->whereColumn('contractor_users.user_id', 'users.id'))->delete();
+};
 
-Artisan::command('akredia:demo {institusi=semua : unj, uin-suka, unm, atau semua} {--force : Muat ulang tanpa konfirmasi}', function (string $institusi = 'semua') {
-    // "semua" memuat perguruan tinggi contoh yang dapat dibuka lewat "Masuk sebagai Tamu"; UNM (fiktif) dimuat terpisah.
-    $all = [UnjDemoSeeder::SLUG => UnjDemoSeeder::class, UinSukaDemoSeeder::SLUG => UinSukaDemoSeeder::class];
-    $seeders = collect($all + [DemoSeeder::SLUG => DemoSeeder::class])->only($institusi === 'semua' ? array_keys($all) : [$institusi]);
+Artisan::command('rekana:demo {perusahaan=semua : garudafood-gresik, medco-corridor, pakuwon-surabaya, atau semua} {--force : Muat ulang tanpa konfirmasi}', function (string $perusahaan = 'semua') use ($removeDemo) {
+    $stories = collect(DemoController::STORIES)->map(fn ($s) => $s[3]);
+    $seeders = $perusahaan === 'semua' ? $stories : $stories->only([$perusahaan]);
 
     if ($seeders->isEmpty()) {
-        return $this->error('Pilihan institusi: unj, uin-suka, unm, atau semua.');
+        return $this->error('Pilihan: '.$stories->keys()->implode(', ').', atau semua.');
     }
 
-    if (Institution::whereIn('slug', $seeders->keys())->exists() && ! $this->option('force') && ! $this->confirm('Data contoh sudah ada dan akan dimuat ulang. Lanjutkan?')) {
-        return;
+    $existing = Owner::where('is_demo', true)->whereIn('slug', $seeders->keys())->get();
+    if ($existing->isNotEmpty()) {
+        if (! $this->option('force') && ! $this->confirm('Data contoh sudah ada dan akan dimuat ulang. Lanjutkan?')) {
+            return;
+        }
+        $existing->each($removeDemo);
     }
 
     foreach ($seeders as $seeder) {
         $this->call('db:seed', ['--class' => $seeder, '--force' => true]);
     }
+})->purpose('Muat data contoh simulasi: Garudafood, MedcoEnergi, Pakuwon Jati');
 
-    // Akun tamu lama (satu institusi) digantikan akun tamu bersama.
-    User::where('email', 'tamu@unj.akredia.test')->delete();
-})->purpose('Muat data contoh: UNJ dan UIN Sunan Kalijaga (profil dari laman resmi, angka ilustrasi) atau UNM (fiktif)');
-
-Artisan::command('akredia:remove-demo {institusi? : slug institusi contoh; kosongkan untuk semua} {--force}', function (?string $institusi = null) {
-    $demo = Institution::where('is_demo', true)->when($institusi, fn ($query) => $query->where('slug', $institusi))->get();
+Artisan::command('rekana:remove-demo {perusahaan? : slug owner contoh; kosongkan untuk semua} {--force}', function (?string $perusahaan = null) use ($removeDemo) {
+    $demo = Owner::where('is_demo', true)->when($perusahaan, fn ($q) => $q->where('slug', $perusahaan))->get();
 
     if ($demo->isEmpty()) {
         return $this->info('Tidak ada data contoh.');
     }
 
-    if (! $this->option('force') && ! $this->confirm('Hapus '.$demo->count().' institusi contoh beserta seluruh datanya?')) {
+    if (! $this->option('force') && ! $this->confirm('Hapus '.$demo->count().' owner contoh beserta rekanan dan akun demonya?')) {
         return;
     }
 
-    foreach ($demo as $institution) {
-        Storage::disk(EvidenceService::DISK)->deleteDirectory('bukti/'.$institution->id);
-        $userIds = Membership::withoutGlobalScopes()->where('institution_id', $institution->id)->pluck('user_id');
-        $institution->delete();
-        // Akun demo yang tidak lagi menjadi anggota institusi mana pun ikut dihapus.
-        User::whereIn('id', $userIds)->where('email', 'like', '%akredia.test')->where('is_platform_admin', false)
-            ->whereDoesntHave('memberships')->delete();
+    $demo->each($removeDemo);
+    $this->info('Data contoh dihapus: '.$demo->pluck('name')->implode(', ').'.');
+})->purpose('Hapus owner contoh, rekanan contoh, dan akun demo');
+
+Artisan::command('rekana:expire-cards', function () {
+    $this->info(app(MobilizationService::class)->expireCards().' kartu akses ditandai kedaluwarsa.');
+})->purpose('Tandai kartu akses yang lewat masa berlaku');
+
+Artisan::command('rekana:reminders', function () {
+    $days = (int) config('rekana.dashboard.expiry_days', 60);
+    $sent = 0;
+
+    // Owner: sertifikat CSMS rekanan yang akan habis, dikirim ke administrator, pimpinan, dan evaluator HSE.
+    foreach (Owner::where('is_active', true)->get() as $owner) {
+        $certs = CsmsCertificate::withoutGlobalScopes()->where('owner_id', $owner->id)->whereNull('revoked_at')
+            ->whereBetween('valid_until', [today(), today()->addDays($days)])->with('contractor')->get();
+        if ($certs->isEmpty()) {
+            continue;
+        }
+        $users = Membership::withoutGlobalScopes()->where('owner_id', $owner->id)->where('is_active', true)
+            ->whereIn('role', [Role::Admin->value, Role::Pimpinan->value, Role::Evaluator->value])->with('user')->get()->pluck('user')->filter();
+        foreach ($users as $user) {
+            Notification::make()->title($certs->count().' sertifikat CSMS rekanan habis dalam '.$days.' hari')
+                ->body($certs->take(5)->map(fn ($c) => $c->contractor->name.' ('.$c->valid_until->format('d M Y').')')->implode("\n"))
+                ->warning()->sendToDatabase($user);
+            $sent++;
+        }
     }
 
-    $this->info('Data contoh dihapus: '.$demo->pluck('name')->implode(', ').'.');
-})->purpose('Hapus institusi contoh, akun demo, dan berkas buktinya');
+    // Rekanan: dokumen perusahaan yang akan habis.
+    $docs = ContractorDocument::whereBetween('expires_at', [today(), today()->addDays($days)])->get()->groupBy('contractor_id');
+    foreach ($docs as $contractorId => $list) {
+        $users = User::whereIn('id', DB::table('contractor_users')->where('contractor_id', $contractorId)->where('is_active', true)->where('role', '!=', 'tamu')->pluck('user_id'))->get();
+        foreach ($users as $user) {
+            Notification::make()->title($list->count().' dokumen perusahaan habis dalam '.$days.' hari')
+                ->body($list->take(5)->map(fn ($d) => $d->title.' ('.$d->expires_at->format('d M Y').')')->implode("\n"))
+                ->warning()->sendToDatabase($user);
+            $sent++;
+        }
+    }
 
-Artisan::command('akredia:doctor', function () {
+    $this->info("{$sent} pengingat dikirim.");
+})->purpose('Ingatkan sertifikat CSMS dan dokumen rekanan yang akan kedaluwarsa');
+
+Artisan::command('rekana:doctor', function () {
     $rows = [];
     $check = function (string $label, bool $ok, string $detail = '') use (&$rows) {
         $rows[] = [$ok ? 'OK' : 'GAGAL', $label, $detail];
     };
 
     $check('Versi PHP >= 8.3', version_compare(PHP_VERSION, '8.3.0', '>='), PHP_VERSION);
-
     foreach (['pdo_mysql', 'mbstring', 'openssl', 'zip', 'xml', 'fileinfo', 'intl', 'gd', 'curl', 'ctype', 'tokenizer'] as $ext) {
         $check("Ekstensi {$ext}", extension_loaded($ext));
     }
 
-    $schema = null;
-
+    $migrated = false;
     try {
-        $version = DB::selectOne('select version() as v')->v;
-        $check('Koneksi database', true, $version);
-        $schema = DB::getSchemaBuilder();
-        $check('Tabel sudah dimigrasi', $schema->hasTable('institutions'));
+        $check('Koneksi database', true, DB::connection()->getDriverName());
+        $migrated = DB::getSchemaBuilder()->hasTable('owners');
+        $check('Tabel sudah dimigrasi', $migrated);
     } catch (Throwable $e) {
         $check('Koneksi database', false, $e->getMessage());
     }
@@ -127,105 +158,17 @@ Artisan::command('akredia:doctor', function () {
     $check('bootstrap/cache dapat ditulis', is_writable(base_path('bootstrap/cache')));
     $check('Aset Filament terpasang', file_exists(public_path('css/filament/filament/app.css')));
 
-    if ($schema?->hasTable('institutions')) {
-        $check('Pustaka Instrumen IAPT 4.1', DB::table('instrument_versions')->where('code', 'IAPT-4.1')->exists());
-        $check('Administrator platform', User::where('is_platform_admin', true)->exists());
-        $heartbeat = rescue(fn () => cache('akredia:schedule-heartbeat'), null, false);
+    if ($migrated) {
+        $check('Template PQ bawaan', DB::table('questionnaire_templates')->whereNull('owner_id')->exists(), 'jalankan php artisan db:seed bila kosong');
+        $check('Minimal satu owner', Owner::exists(), 'buat dengan php artisan rekana:owner');
+        $heartbeat = rescue(fn () => cache('rekana:schedule-heartbeat'), null, false);
         $check('Penjadwal (cron) berjalan', $heartbeat !== null, $heartbeat ?? 'belum ada detak; pasang cron schedule:run');
     }
-
-    $check('Asisten AI', true, config('akredia.ai.key') ? 'aktif' : 'nonaktif (opsional)');
 
     $this->table(['', 'Pemeriksaan', 'Keterangan'], $rows);
 })->purpose('Periksa kesiapan server (PHP, ekstensi, database, izin folder, cron)');
 
-Artisan::command('akredia:check-links {--institution=}', function () use ($institutions) {
-    foreach ($institutions($this->option('institution')) as $institution) {
-        $r = app(EvidenceService::class)->checkAll($institution->id);
-        $this->line("{$institution->name}: {$r['checked']} tautan diperiksa, {$r['broken']} rusak.");
-    }
-})->purpose('Periksa tautan bukti dan hyperlink LED');
-
-Artisan::command('akredia:snapshot {--institution=}', function () use ($institutions) {
-    foreach ($institutions($this->option('institution')) as $institution) {
-        app(CurrentInstitution::class)->runAs($institution, function () use ($institution) {
-            app(EvidenceService::class)->expireDue($institution->id);
-
-            if ($project = $institution->activeProject()) {
-                $result = app(ReadinessCalculator::class)->refresh($project);
-                $this->line("{$institution->name}: AKI {$result['aki']}");
-            }
-        });
-    }
-})->purpose('Hitung ulang kesiapan dan rekam snapshot harian');
-
-Artisan::command('akredia:reminders {--institution=}', function () use ($institutions) {
-    $escalate = (int) config('akredia.task_escalation_days', 7);
-    $sent = 0;
-
-    foreach ($institutions($this->option('institution')) as $institution) {
-        app(CurrentInstitution::class)->runAs($institution, function () use ($escalate, &$sent) {
-            $open = Task::query()->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])->whereNotNull('due_date')->with('assignee')->get();
-
-            foreach ($open->groupBy('assignee_id') as $tasks) {
-                $user = $tasks->first()->assignee;
-                $soon = $tasks->filter(fn ($t) => $t->due_date->between(today(), today()->addDays(3)));
-                $late = $tasks->filter(fn ($t) => $t->due_date->lt(today()));
-
-                if (! $user || ($soon->isEmpty() && $late->isEmpty())) {
-                    continue;
-                }
-
-                Notification::make()->title('Pengingat tugas akreditasi')
-                    ->body(trim(($late->count() ? "{$late->count()} tugas lewat tenggat. " : '').($soon->count() ? "{$soon->count()} tugas jatuh tempo dalam 3 hari." : '')))
-                    ->warning()->sendToDatabase($user);
-                $sent++;
-            }
-
-            // Eskalasi ke manajer untuk tugas yang terlambat lebih dari N hari.
-            $overdue = $open->filter(fn ($t) => $t->due_date->lt(today()->subDays($escalate)) && ! $t->escalated_at);
-
-            if ($overdue->isNotEmpty()) {
-                $managers = Membership::query()->whereIn('role', [Role::Manajer->value, Role::Admin->value])->where('is_active', true)->with('user')->get()->pluck('user')->filter();
-
-                foreach ($managers as $manager) {
-                    Notification::make()->title('Eskalasi: '.$overdue->count().' tugas terlambat lebih dari '.$escalate.' hari')
-                        ->body($overdue->take(5)->map(fn ($t) => $t->number.' '.$t->title)->implode("\n"))->danger()->sendToDatabase($manager);
-                }
-
-                Task::query()->whereKey($overdue->pluck('id'))->update(['escalated_at' => now()]);
-            }
-        });
-    }
-
-    $this->info("{$sent} pengingat dikirim.");
-})->purpose('Kirim pengingat tenggat dan eskalasi tugas terlambat');
-
-Artisan::command('akredia:weekly-report {--institution=}', function () use ($institutions) {
-    foreach ($institutions($this->option('institution')) as $institution) {
-        app(CurrentInstitution::class)->runAs($institution, function () use ($institution) {
-            $project = $institution->activeProject();
-            $html = view('reports.weekly', [
-                'institution' => $institution,
-                'd' => app(ExecutiveDashboard::class)->data($project),
-                'gate' => $project ? app(ReadinessCalculator::class)->gate($project) : [],
-            ])->render();
-            $leaders = Membership::query()->whereIn('role', [Role::Pimpinan->value, Role::Manajer->value])->where('is_active', true)->with('user')->get()->pluck('user')->filter();
-
-            foreach ($leaders as $user) {
-                Mail::html($html, fn ($m) => $m->to($user->email)->subject('Ringkasan mingguan kesiapan akreditasi · '.$institution->name));
-            }
-
-            $this->line("{$institution->name}: dikirim ke {$leaders->count()} pimpinan/manajer.");
-        });
-    }
-})->purpose('Kirim ringkasan mingguan kesiapan ke pimpinan');
-
-Schedule::call(fn () => cache()->put('akredia:schedule-heartbeat', now()->toDateTimeString(), now()->addDay()))->everyFiveMinutes()->name('heartbeat');
-Schedule::command('akredia:snapshot')->dailyAt('01:00')->withoutOverlapping();
-Schedule::command('akredia:reminders')->dailyAt('07:00')->withoutOverlapping();
-Schedule::command('akredia:check-links')->weeklyOn(0, '02:00')->withoutOverlapping();
-Schedule::command('akredia:weekly-report')->weeklyOn(match (config('akredia.weekly_report_day')) {
-    'sunday' => 0, 'tuesday' => 2, 'wednesday' => 3, 'thursday' => 4, 'friday' => 5, 'saturday' => 6, default => 1,
-}, '06:30');
+Schedule::call(fn () => cache()->put('rekana:schedule-heartbeat', now()->toDateTimeString(), now()->addDay()))->everyFiveMinutes()->name('heartbeat');
+Schedule::command('rekana:expire-cards')->dailyAt('00:10')->withoutOverlapping();
+Schedule::command('rekana:reminders')->dailyAt('07:00')->withoutOverlapping();
 Schedule::command('queue:work --stop-when-empty --max-time=50')->everyMinute()->withoutOverlapping();
