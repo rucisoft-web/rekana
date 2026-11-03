@@ -26,12 +26,12 @@ class PageSmokeTest extends TestCase
         $base = '/app/'.$owner->slug;
 
         $paths = ['', '/area', '/pengguna', '/template-pq', '/log-audit', '/rekanan', '/prakualifikasi',
-            '/sertifikat', '/rencana-pekerjaan', '/seleksi', '/kontrak', '/induksi', '/kartu-akses', '/izin-kerja'];
+            '/sertifikat', '/rencana-pekerjaan', '/seleksi', '/kontrak', '/induksi', '/kartu-akses', '/izin-kerja', '/panduan'];
 
         foreach ([$admin, User::where('email', User::DEMO_GUEST_EMAIL)->first()] as $user) {
             $this->flushSession();
             foreach ($paths as $path) {
-                $this->actingAs($user)->get($base.$path)->assertOk();
+                $this->actingAs($user)->get($base.$path)->assertOk()->assertSee('rk-help-btn', false);
             }
             $pq = Prequalification::withoutGlobalScopes()->where('owner_id', $owner->id)->firstOrFail();
             $this->actingAs($user)->get($base.'/prakualifikasi/'.$pq->id)->assertOk();
@@ -51,6 +51,9 @@ class PageSmokeTest extends TestCase
         foreach (['', '/dokumen', '/statistik-k3', '/pekerja', '/prakualifikasi', '/undangan-seleksi', '/kontrak', '/izin-kerja'] as $path) {
             $this->actingAs($contractorAdmin)->get('/kontraktor/'.$slug.$path)->assertOk();
         }
+        $pqId = \App\Models\Prequalification::withoutGlobalScopes()->where('contractor_id', $contractorAdmin->contractors()->first()->id)->value('id');
+        $this->actingAs($contractorAdmin)->get('/kontraktor/'.$slug.'/prakualifikasi/'.$pqId)->assertOk();
+        $this->actingAs($contractorAdmin)->get('/kontraktor/'.$slug.'/panduan')->assertOk()->assertSee('Menjawab Prakualifikasi');
 
         // Rekanan tidak dapat membuka panel owner.
         $this->assertContains($this->actingAs($contractorAdmin)->get($base)->status(), [403, 404]);

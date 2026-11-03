@@ -1,917 +1,578 @@
 <?php
 
 /*
- * Isi tombol Bantuan per halaman panel Akredia.
+ * Isi tombol Bantuan per halaman Rekana.
  *
- * Kunci: slug resource (mis. "documents") atau slug halaman (mis. "tabel-lkpt",
- * "panduan.memahami-iapt"). Setiap entri:
- *  - judul, ringkas     : apa halaman ini dan mengapa penting untuk akreditasi;
- *  - langkah            : urutan kerja yang disarankan;
- *  - isian              : [kolom, penjelasan, contoh pengisian];
- *  - indikator          : nomor indikator IAPT 4.1 yang dirujuk (teks resmi dimuat dari
- *                         database/data/iapt41-resmi-3c.php);
- *  - lkpt               : tabel LKPT (Lampiran 4b) yang terkait;
- *  - resmi              : kutipan/ketentuan penting dari dokumen resmi BAN-PT;
- *  - tips               : kesalahan umum dan saran.
+ * Kunci: "<panel>.<halaman>", dengan panel "app" (owner) atau "kontraktor" (portal rekanan) dan
+ * halaman = slug resource ("izin-kerja"), slug resource + ".edit"/".view" untuk halaman rinci,
+ * atau slug halaman khusus ("dasbor-rekanan"). Setiap entri:
+ *  - judul, ringkas : apa halaman ini dan kapan dipakai;
+ *  - fase           : fase IOGP 423 yang dilayani halaman ini (opsional);
+ *  - konsep         : [istilah, penjelasan] yang perlu dipahami sebelum mengisi;
+ *  - langkah        : urutan cara input data;
+ *  - isian          : [kolom, penjelasan, contoh pengisian];
+ *  - gambar         : keterangan tangkapan layar (berkas public/img/bantuan/<panel>-<halaman>.png);
+ *  - tips           : kesalahan umum dan saran.
  *
- * Rujukan: PerBAN-PT No. 35/2025 (IAPT 4.1) beserta Lampiran 2 (Kriteria dan Prosedur),
- * Lampiran 3c (Sistem dan Acuan Penilaian PTS Akademik), Lampiran 4a (Panduan LED), dan
- * Lampiran 4b (Panduan LKPT).
+ * Angka ambang (skor PQ, batas gas, durasi izin) mengikuti config/rekana.php dan dapat diubah per instalasi.
  */
+
+$pq = config('rekana.pq.thresholds');
+$gas = config('rekana.gas_limits');
+$maxHours = config('rekana.permit_max_hours');
 
 return [
 
-    /* ------------------------------------------------------------------ Ringkasan */
+    /* =============================================================== PANEL OWNER */
 
-    'dasbor-eksekutif' => [
-        'judul' => 'Dasbor Eksekutif',
-        'ringkas' => 'Gambaran kesiapan akreditasi institusi dalam satu layar: Indeks Kesiapan Akredia (AKI), proyeksi skor untuk status Terakreditasi dan Terakreditasi Unggul, syarat perlu yang belum terpenuhi, dan gerbang "Siap Diajukan". Angka di sini dihitung dari butir kerja, bukti, LED, dan data kinerja yang diisi tim.',
+    'app.dasbor-rekanan' => [
+        'judul' => 'Dasbor Monitoring',
+        'ringkas' => 'Ringkasan seluruh rekanan dalam satu layar untuk keputusan cepat: siapa yang aman dipakai, siapa yang perlu ditinjau, dokumen apa yang segera kedaluwarsa, dan izin kerja apa yang sedang berjalan. Semua angka dihitung langsung dari data prakualifikasi, kontrak, izin kerja, dan statistik K3 yang dilaporkan rekanan.',
+        'konsep' => [
+            ['LTIFR', 'Lost Time Injury Frequency Rate: jumlah kecelakaan hilang waktu per 1.000.000 jam kerja. Dihitung dari statistik K3 tiga tahun terakhir yang diisi rekanan. Ambang peringatan Rekana: '.config('rekana.dashboard.ltifr_alert').'.'],
+            ['TRIR', 'Total Recordable Incident Rate: semua kasus tercatat (hilang waktu, perawatan medis, kerja terbatas) per 200.000 jam kerja. Ambang peringatan: '.config('rekana.dashboard.trir_alert').'.'],
+            ['Kuadran keputusan', 'Grafik gelembung yang memetakan skor PQ (sumbu tegak) terhadap LTIFR (sumbu datar). Kiri atas = andalkan; kanan atas = skor bagus tetapi insiden tinggi, minta rencana perbaikan; kiri bawah = bina; kanan bawah = tinjau ulang kelayakan. Ukuran gelembung = jumlah izin kerja 90 hari terakhir.'],
+            ['Corong CSMS', 'Jumlah rekanan di setiap tahap: terdaftar, PQ diajukan, lulus PQ, berkontrak, bekerja (punya izin aktif). Corong yang menyempit tajam di satu tahap menunjukkan hambatan proses.'],
+            ['Kartu skor rekanan', 'Tabel per rekanan dengan skor PQ, kategori risiko maksimum sertifikat, LTIFR, TRIR, izin dibatalkan, dan saran tindakan. Warna saran: hijau aman, kuning pantau, merah tinjau.'],
+        ],
         'langkah' => [
-            'Pastikan ada proyek akreditasi aktif (menu Persiapan Akreditasi → Proyek akreditasi) dengan varian instrumen dan Tahun Sekarang (TS) yang benar.',
-            'Baca kartu "Syarat perlu gagal" lebih dulu. Selama masih ada syarat perlu yang gagal, status yang dituju tidak dapat diperoleh berapa pun skor totalnya.',
-            'Lihat proyeksi: BAN-PT menetapkan status Terakreditasi bila seluruh syarat perlu Terakreditasi terpenuhi dan skor total ≥ 80%; Unggul bila seluruh syarat perlu Unggul terpenuhi dan skor ≥ 80%.',
-            'Klik kartu atau peta panas kriteria untuk turun ke butir kerja yang merah atau kuning, lalu tetapkan tugas.',
-            'Tekan "Hitung ulang" setelah data kinerja diperbarui agar metrik dan proyeksi memakai angka terbaru.',
+            'Mulai dari baris kartu angka di atas: perhatikan kartu "Perlu keputusan" dan "Kedaluwarsa ≤ 60 hari".',
+            'Baca panel "Keputusan yang menunggu Anda": PQ yang menunggu persetujuan, izin kerja yang menunggu tanda tangan, kontrak yang menunggu izin mulai kerja. Klik tautan untuk langsung membuka halaman tindakannya.',
+            'Lihat kuadran keputusan. Rekanan di kanan bawah perlu dipanggil atau dibatasi; rekanan di kanan atas perlu rencana perbaikan K3.',
+            'Periksa tren izin kerja 12 minggu dan izin per rekanan untuk melihat beban kerja berisiko di lokasi.',
+            'Gulir ke kartu skor untuk saran per rekanan, lalu klik nama rekanan untuk membuka profilnya.',
         ],
-        'isian' => [
-            ['AKI (Indeks Kesiapan Akredia)', 'Ukuran internal Akredia (0–100) yang menggabungkan status butir kerja, kata kunci berbukti, LED yang disetujui, dan data yang terekonsiliasi. Bukan skor resmi BAN-PT.', 'AKI 72 berarti sebagian besar butir sudah berbukti tetapi LED belum banyak disetujui.'],
-            ['Proyeksi Terakreditasi / Unggul', 'Persentase deskriptor yang diperkirakan bernilai 1 (memenuhi) dari seluruh deskriptor jalur itu. Setiap deskriptor IAPT 4.1 bernilai 1 atau 0.', 'Proyeksi Unggul 84% tetapi 1 syarat perlu Unggul gagal → status yang realistis tetap Terakreditasi.'],
-            ['Gerbang Siap Diajukan', 'Daftar periksa sebelum pengajuan di SAPTO: syarat perlu, LED disahkan, data TS dikunci, rekonsiliasi PD Dikti, dan bukti publik dapat diakses.', 'Gerbang 6/7: tinggal "data TS dikunci" yang belum.'],
-        ],
-        'indikator' => [4, 7, 11],
-        'resmi' => [
-            'Lampiran 2: Status TERAKREDITASI diberikan bila seluruh syarat perlu Terakreditasi terpenuhi dan skor total ≥ 80%; status TERAKREDITASI UNGGUL bila seluruh syarat perlu Unggul terpenuhi dan skor total ≥ 80%. Akreditasi berlaku 8 tahun.',
-            'Lampiran 2: Asesmen terdiri atas Asesmen Kecukupan (AK), Asesmen Lapangan (AL) bila diputuskan Dewan Eksekutif (daring atau luring), lalu validasi melalui SAPTO 2.0.',
-            'Lampiran 3c: Syarat perlu Terakreditasi pada PTS Akademik antara lain Indikator 1 (SPMI), Indikator 4 (100% prodi terakreditasi), Indikator 7A (minimal 5 dosen per prodi), dan Indikator 11 (DTJA). Daftar lengkap ada pada penanda "Syarat perlu" di rujukan resmi setiap indikator.',
-        ],
+        'gambar' => 'Dasbor owner pada data demo Garudafood: kartu angka, keputusan menunggu, dan kuadran skor PQ terhadap LTIFR.',
         'tips' => [
-            'Angka proyeksi hanya sebaik data yang dimasukkan. Prioritaskan rekonsiliasi dengan PD Dikti sebelum mempercayai proyeksi.',
-            'Bagi pimpinan: cukup tanyakan tiga hal setiap minggu, yaitu berapa syarat perlu gagal, tugas apa yang terlambat, dan keputusan apa yang ditunggu tim.',
+            'Dasbor tidak memerlukan input. Bila sebuah grafik kosong, berarti datanya belum ada: misalnya belum ada rekanan yang mengisi statistik K3 atau belum ada izin kerja.',
+            'LTIFR rekanan kecil dengan jam kerja sedikit mudah melonjak oleh satu kasus. Baca bersama jumlah jam kerja di profil rekanan sebelum memutuskan.',
+            'Untuk rapat P2K3 bulanan, cukup tampilkan halaman ini dan bahas tiga hal: keputusan tertunda, rekanan di kuadran merah, dan dokumen yang akan kedaluwarsa.',
         ],
     ],
 
-    'pekerjaan-saya' => [
-        'judul' => 'Pekerjaan Saya',
-        'ringkas' => 'Daftar pekerjaan pribadi Anda: sub-indikator yang Anda pegang sebagai PIC, tugas terbuka, LED yang menunggu reviu Anda, dan bukti yang menunggu validasi. Mulailah hari dari halaman ini.',
+    'app.area' => [
+        'judul' => 'Area Kerja',
+        'ringkas' => 'Daftar area di lokasi owner beserta kelas bahayanya. Area dipakai oleh rencana pekerjaan, induksi, dan izin kerja, sehingga aturan khusus area ikut terbawa ke setiap izin.',
+        'fase' => 'Persiapan (sebelum fase 1)',
+        'konsep' => [
+            ['Kelas area', 'Umum (kantor, parkir), Produksi pangan (GMP dan halal: aturan benda asing, kaca dan plastik keras), Terbatas (hanya orang berwenang), dan Bahaya (amonia, boiler, gas). Kerja panas di area Bahaya otomatis mewajibkan uji gas sebelum izin diajukan.'],
+            ['Kode area', 'Singkatan pendek yang dicetak di kartu akses dan izin kerja, sehingga petugas lapangan cepat membaca lokasi.'],
+        ],
         'langkah' => [
-            'Kerjakan dulu yang tenggatnya paling dekat atau sudah terlambat (ditandai merah).',
-            'Untuk sub-indikator yang Anda pegang: buka butir kerja → isi analisis kesenjangan → lengkapi kertas kerja per kata kunci → tautkan bukti → tulis narasi LED.',
-            'Bila Anda reviewer: buka LED yang menunggu reviu, beri komentar per paragraf, lalu setujui atau minta revisi.',
-            'Bila Anda validator bukti: periksa dokumen (nomor, tanggal, pengesah, masa berlaku) sebelum menandai valid.',
+            'Klik "Buat Area kerja".',
+            'Isi kode singkat dan nama area yang dikenal di lapangan.',
+            'Pilih kelas area sesuai bahaya terbesar di area tersebut.',
+            'Tulis aturan khusus di keterangan, misalnya APD tambahan, jam kerja terbatas, atau larangan membawa kaca.',
+            'Simpan. Ulangi untuk setiap area utama; cukup 6–12 area agar mudah dipilih.',
         ],
         'isian' => [
-            ['Sub-indikator yang saya pegang', 'Butir kerja yang PIC utamanya Anda. Warna menunjukkan kesiapan: merah belum dianalisis, kuning sedang berjalan, hijau disetujui.', 'Sub-indikator 7A "Kecukupan dosen" berwarna kuning karena 1 prodi baru punya 4 dosen tetap.'],
-            ['Tugas terbuka', 'Tugas yang ditugaskan kepada Anda dari butir kerja, temuan audit, keputusan pimpinan, atau risiko.', 'T-0042 "Unggah SK pengangkatan dosen tetap prodi Farmasi", tenggat 15 November.'],
+            ['Kode', 'Singkatan unik per owner, huruf kapital.', 'PRD, UTL, IPL'],
+            ['Nama area', 'Nama yang dipakai di lapangan.', 'Utilitas: boiler biomassa dan kompresor'],
+            ['Kelas area', 'Umum, Produksi pangan, Terbatas, atau Bahaya.', 'Bahaya untuk ruang mesin amonia'],
+            ['Keterangan dan aturan khusus', 'Aturan yang wajib diketahui pekerja kontraktor di area ini.', 'Wajib earplug; dilarang kerja panas tanpa uji LEL; titik kumpul TK-2.'],
         ],
-        'indikator' => [],
+        'gambar' => 'Daftar area demo Garudafood Gresik dengan kelas bahaya berwarna.',
         'tips' => [
-            'Jika daftar kosong padahal Anda merasa memegang pekerjaan, minta Manajer menetapkan Anda sebagai PIC atau penanggung jawab tugas.',
+            'Jangan membuat area terlalu rinci (per mesin). Rinciannya cukup ditulis di kolom "Lokasi rinci" pada izin kerja.',
         ],
     ],
 
-    'laporan' => [
-        'judul' => 'Laporan & Ekspor',
-        'ringkas' => 'Pusat unduhan: laporan mingguan pimpinan, status syarat perlu, LED lengkap (DOCX/PDF), Tabel LKPT (XLSX), kertas kerja PIC, daftar bukti publik, dan log audit.',
+    'app.template-pq' => [
+        'judul' => 'Template Kuesioner PQ',
+        'ringkas' => 'Kumpulan pertanyaan prakualifikasi (PQ) yang dijawab rekanan untuk membuktikan sistem manajemen K3-nya. Rekana menyediakan template bawaan; owner dapat menyalin dan menyesuaikannya.',
+        'fase' => 'Fase 2: Prakualifikasi',
+        'konsep' => [
+            ['Bobot', 'Seberapa penting sebuah butir (1–3). Skor PQ = jumlah (bobot × skor butir) dibagi jumlah (bobot × 4), dalam persen.'],
+            ['Butir kritis', 'Butir yang tidak boleh bernilai 0. Bila evaluator memberi 0 pada butir kritis, PQ gagal berapa pun skor totalnya. Contoh: kepesertaan BPJS Ketenagakerjaan, kebijakan K3 bertanda tangan pimpinan.'],
+            ['Ambang kategori', "Skor minimum untuk boleh mengerjakan pekerjaan berisiko: Rendah {$pq['rendah']}%, Menengah {$pq['menengah']}%, Tinggi {$pq['tinggi']}%."],
+            ['Template bawaan', 'Template milik Rekana (ISO 45001 dan SMK3 untuk pangan, konstruksi gedung, migas) dapat dipakai semua owner tetapi tidak dapat diubah. Gunakan tombol "Salin untuk disesuaikan".'],
+        ],
         'langkah' => [
-            'Laporan mingguan pimpinan: cetak setiap pekan untuk rapat koordinasi akreditasi.',
-            'LED lengkap (DOCX): unduh setelah semua bagian disahkan, lalu sesuaikan tata letak dengan ketentuan Panduan LED sebelum diunggah ke SAPTO.',
-            'Tabel LKPT (XLSX): unduh setelah data TS dikunci. Isi LKPT di SAPTO memakai data PD Dikti; tabel ini dipakai untuk memeriksa kecocokan dan menyiapkan URL bukti untuk data yang tidak ada di PD Dikti.',
-            'Daftar bukti publik: berisi URL yang dapat dibuka asesor tanpa login. Tempelkan URL ini pada isian LED/LKPT yang meminta tautan bukti.',
+            'Pilih template yang paling dekat dengan industri Anda, lalu klik "Salin untuk disesuaikan".',
+            'Buka salinan, ubah nama, dan tambah atau hapus butir sesuai pedoman CSMS internal.',
+            'Tandai butir kritis hanya untuk hal yang benar-benar menggugurkan (biasanya 3–6 butir).',
+            'Simpan. Template siap dipilih saat memulai prakualifikasi di halaman Rekanan.',
         ],
-        'isian' => [],
-        'indikator' => [],
-        'resmi' => [
-            'Lampiran 4a (Panduan LED): dokumen LED ditulis pada kertas A4, huruf Arial 11, spasi 1,15, paling banyak 300 halaman. Ringkasan eksekutif paling banyak 10 halaman, Bab I Pendahuluan paling banyak 20 halaman, dan Bab III Penutup paling banyak 5 halaman.',
-            'Lampiran 2: Data LKPT diambil dari PD Dikti per TS. Data yang tidak tersedia di PD Dikti diisi dengan tautan (URL) ke bukti.',
-        ],
+        'gambar' => 'Daftar template: template bawaan Rekana dan salinan milik owner.',
         'tips' => [
-            'Periksa ulang semua tautan bukti di menu Pustaka Bukti → Pemeriksaan tautan sebelum mengekspor. Tautan mati membuat asesor menganggap bukti tidak ada.',
+            'Template yang sudah dipakai PQ berjalan sebaiknya tidak diubah besar-besaran; buat versi baru agar penilaian lama tetap dapat ditelusuri.',
         ],
     ],
 
-    /* ------------------------------------------------------------------ Persiapan Akreditasi */
-
-    'accreditation-projects' => [
-        'judul' => 'Proyek Akreditasi',
-        'ringkas' => 'Satu proyek mewakili satu siklus pengajuan akreditasi institusi. Proyek menentukan varian instrumen (Lampiran 3a–3h), Tahun Sekarang (TS), jalur target, dan target tanggal pengajuan. Semua butir kerja, LED, dan perhitungan metrik melekat pada proyek.',
+    'app.rekanan' => [
+        'judul' => 'Daftar Rekanan',
+        'ringkas' => 'Daftar perusahaan kontraktor yang terdaftar pada owner Anda beserta statusnya: menunggu verifikasi, aktif, atau daftar hitam. Dari sini owner memulai prakualifikasi.',
+        'fase' => 'Fase 2: Prakualifikasi',
+        'konsep' => [
+            ['Registrasi', 'Hubungan satu rekanan dengan satu owner. Satu perusahaan kontraktor dapat bekerja untuk banyak owner di Rekana dengan satu akun portal; dokumen dan statistiknya cukup diisi sekali.'],
+            ['Verifikasi', 'Pemeriksaan legalitas (NIB, NPWP, SBU) sebelum rekanan boleh mengikuti PQ.'],
+            ['Daftar hitam', 'Rekanan yang dilarang bekerja karena pelanggaran K3 berat. Semua sertifikat aktif ikut tidak berlaku dan rekanan tidak dapat diundang seleksi.'],
+        ],
         'langkah' => [
-            'Pilih varian instrumen sesuai jenis PT. Contoh: universitas swasta → Lampiran 3c PTS Akademik; politeknik negeri → 3e PTN Vokasi. Varian menentukan sub-indikator, ambang, dan syarat perlu.',
-            'Tetapkan TS, yaitu tahun akademik penuh terakhir yang datanya sudah lengkap di PD Dikti.',
-            'Pilih jalur target (Terakreditasi atau Unggul). Kedua jalur tetap diproyeksikan; jalur target menentukan gerbang yang diperiksa.',
-            'Setelah proyek dibuat, Akredia membuat butir kerja untuk setiap sub-indikator. Tetapkan PIC dan reviewer di menu Butir Kerja.',
-            'Menjelang pengajuan: kunci data TS (agar angka tidak berubah) lalu ubah status ke "Siap diajukan".',
+            'Buka rekanan berstatus "Menunggu verifikasi", periksa dokumen legalitas pada tab Dokumen, lalu klik "Verifikasi / aktifkan".',
+            'Klik "Mulai prakualifikasi", pilih template kuesioner dan kategori risiko yang dituju (Rendah, Menengah, atau Tinggi) sesuai pekerjaan yang akan diberikan.',
+            'Rekanan menerima PQ di portalnya. Pantau statusnya di menu Prakualifikasi.',
+            'Bila terjadi pelanggaran berat, gunakan "Masukkan daftar hitam" dan tulis alasannya. Tindakan ini tercatat di log audit.',
         ],
         'isian' => [
-            ['Nama proyek', 'Nama singkat siklus akreditasi.', 'Akreditasi Institusi 2026 (IAPT 4.1)'],
-            ['Varian instrumen', 'Lampiran 3 yang berlaku untuk PT Anda. Tidak dapat diganti setelah butir kerja dibuat.', 'PTS Akademik (Lampiran 3c)'],
-            ['Tahun Sekarang (TS)', 'Tahun akademik penuh terakhir. Data TS-1, TS-2, dan seterusnya dihitung mundur dari sini.', 'Bila diajukan Maret 2026, TS = 2024/2025 karena 2025/2026 belum selesai.'],
-            ['Jalur target', 'Status yang dituju: Terakreditasi atau Terakreditasi Unggul.', 'Unggul, bila semua prodi terakreditasi dan minimal 15–20% prodi sudah Unggul/A.'],
-            ['Target pengajuan', 'Tanggal rencana unggah dokumen di SAPTO. Dipakai untuk menghitung mundur tenggat tugas.', '30 Juni 2026'],
-            ['Batas kata per sub-indikator LED', 'Batas internal agar narasi ringkas dan total LED tidak melampaui 300 halaman.', '600 kata'],
+            ['Template kuesioner', 'Template PQ yang dipakai.', 'CSMS ISO 45001 + SMK3 Industri Pangan'],
+            ['Kategori risiko yang dituju', 'Kategori tertinggi yang ingin dicapai rekanan; menentukan ambang skor kelulusan.', 'Tinggi untuk kontraktor mesin yang akan mengelas di area produksi'],
+            ['Alasan (daftar hitam)', 'Fakta singkat dan rujukan laporan investigasi.', 'Fatality 12 Mar 2026, laporan investigasi INV-2026-004'],
         ],
-        'indikator' => [],
-        'resmi' => [
-            'PerBAN-PT 35/2025: IAPT 4.1 menggantikan PerBAN-PT 5/2024, 11/2024, dan 27/2024, dan wajib dipakai paling lambat 6 bulan sejak ditetapkan (2 Desember 2025).',
-            'Lampiran 4b: TS adalah tahun akademik penuh terakhir; TS-n adalah tahun akademik n tahun sebelum TS.',
-            'Lampiran 2: Jumlah indikator dan sub-indikator yang dinilai 62–65 butir, tergantung varian instrumen.',
-        ],
+        'gambar' => 'Daftar rekanan dengan status registrasi dan tombol tindakan.',
         'tips' => [
-            'Kesalahan paling sering: memilih TS tahun berjalan. Akibatnya data kohort dan tracer belum lengkap dan rasio terlihat buruk.',
+            'Kategori risiko yang dituju sebaiknya mengikuti rencana pekerjaan nyata. Meminta semua rekanan lulus "Tinggi" membuat rekanan kecil seperti katering tidak pernah lulus.',
         ],
     ],
 
-    'work-items' => [
-        'judul' => 'Butir Kerja (per sub-indikator)',
-        'ringkas' => 'Setiap baris adalah satu sub-indikator IAPT 4.1 yang harus dibuktikan. Butir kerja memandu PIC dari analisis kesenjangan, kertas kerja per kata kunci, penautan bukti, sampai narasi LED. Status butir menentukan warna peta panas di dasbor.',
+    'app.prakualifikasi' => [
+        'judul' => 'Prakualifikasi (PQ)',
+        'ringkas' => 'Semua prakualifikasi rekanan dan statusnya: draf, diajukan, klarifikasi, dievaluasi, disetujui, atau ditolak. Klik satu baris untuk menilai jawaban.',
+        'fase' => 'Fase 2: Prakualifikasi',
+        'konsep' => [
+            ['Alur status', 'Draf (rekanan mengisi) → Diajukan → (Klarifikasi bila kurang lengkap) → Dievaluasi (skor dihitung) → Disetujui (sertifikat terbit) atau Ditolak.'],
+            ['Empat mata', 'Evaluator yang menghitung skor tidak boleh sekaligus menyetujui. Persetujuan dilakukan orang lain dengan peran Pimpinan atau Administrator.'],
+            ['Kunjungan lapangan', 'Untuk target kategori Tinggi, evaluator sebaiknya mengunjungi kantor atau proyek rekanan dan mencatat temuan sebelum menilai.'],
+        ],
         'langkah' => [
-            'Manajer menetapkan PIC utama, PIC pendamping, reviewer, unit, dan tenggat untuk setiap butir (aksi "Tetapkan PIC / reviewer").',
-            'PIC membaca rujukan resmi BAN-PT (tombol Bantuan pada halaman butir) untuk memahami aspek penilaian dan deskripsi pemenuhan Terakreditasi maupun Unggul.',
-            'Isi "Kondisi saat ini": bandingkan keadaan nyata dengan deskripsi pemenuhan. Tulis apa yang sudah ada, apa yang kurang, dan buktinya.',
-            'Lengkapi kertas kerja: setiap kata kunci deskriptor diberi status Belum/Sebagian/Terbukti beserta rencana tindak lanjut (RTL).',
-            'Tautkan dokumen bukti yang sudah divalidasi, lalu tulis narasi LED dan ajukan reviu.',
+            'Saring status "Diajukan" untuk melihat PQ yang menunggu penilaian.',
+            'Klik baris PQ untuk membuka halaman penilaian.',
+            'Kolom "Diajukan" menunjukkan berapa lama PQ menunggu; usahakan selesai dalam 14 hari.',
         ],
-        'isian' => [
-            ['PIC utama / pendamping', 'Orang yang bertanggung jawab menulis dan mengumpulkan bukti. Pilih pejabat yang menguasai data.', 'Sub-indikator 7B (dosen tidak tetap) → Kepala Biro SDM; pendamping: Wakil Dekan II.'],
-            ['Reviewer', 'Orang yang memeriksa kecukupan bukti dan mutu narasi, idealnya auditor mutu internal atau asesor internal.', 'Ketua LPM'],
-            ['Tenggat', 'Batas penyelesaian butir. Susun mundur dari target pengajuan.', '2 bulan sebelum target pengajuan untuk butir syarat perlu.'],
-            ['Terhambat', 'Centang bila butir menunggu keputusan atau data dari pihak lain, agar terlihat di dasbor pimpinan.', 'Menunggu SK Rektor tentang kebijakan MBKM.'],
-            ['Kondisi saat ini (analisis kesenjangan)', 'Uraian jujur tentang keadaan sekarang dibanding deskripsi pemenuhan resmi, beserta angka dan sumbernya.', 'Rasio mahasiswa:dosen tetap TS = 38,2 (PD Dikti, Okt 2025). Memenuhi Terakreditasi (≤ 40); untuk Unggul ditargetkan 20 < RM/DT < 40, sudah memenuhi. Prodi Hukum 46,0 perlu tambahan 3 dosen.'],
-        ],
-        'indikator' => [],
-        'resmi' => [
-            'Lampiran 2: Setiap deskriptor dinilai 1 (memenuhi) atau 0 (tidak memenuhi). Asesor menilai berdasarkan LED, LKPT, dan bukti yang dapat diakses.',
-            'Lampiran 4a: Untuk setiap indikator, LED meminta perguruan tinggi "menjelaskan" kebijakan, implementasi, dan hasil evaluasi, disertai bukti dalam bentuk dokumen, laman URL, atau lainnya.',
-        ],
+        'gambar' => 'Daftar PQ dengan saringan status dan skor.',
         'tips' => [
-            'Kode sub-indikator di Akredia mengikuti rancangan aplikasi dan dapat berbeda dari huruf sub-aspek resmi (mis. 6A–6C, 7A–7C). Bagian "Rujukan resmi" pada panel ini selalu memakai nomor indikator resmi 1–39.',
-            'Gunakan bahasa deskripsi pemenuhan resmi sebagai kerangka narasi: asesor mencocokkan narasi Anda dengan kalimat itu.',
+            'PQ berstatus Klarifikasi kembali ke rekanan; mereka melihat pesan Anda di portal dan dapat mengajukan ulang.',
         ],
     ],
 
-    'gap-items' => [
-        'judul' => 'Kertas Kerja (Analisis Kesenjangan per Kata Kunci)',
-        'ringkas' => 'Deskripsi pemenuhan setiap sub-indikator dipecah menjadi kata kunci yang harus dibuktikan. Kertas kerja mencatat status pembuktian tiap kata kunci, kondisi implementasi, rencana tindak lanjut (RTL), penanggung jawab, dan tenggat.',
+    'app.prakualifikasi.edit' => [
+        'judul' => 'Menilai Prakualifikasi',
+        'ringkas' => 'Halaman kerja evaluator HSE: membaca jawaban dan bukti rekanan, memberi skor per butir, lalu mengirim hasil ke persetujuan.',
+        'fase' => 'Fase 2: Prakualifikasi',
+        'konsep' => [
+            ['Skor butir 0–4', '0 = tidak ada; 1 = ada tetapi tidak memadai; 2 = memadai sebagian; 3 = memadai dan diterapkan; 4 = diterapkan dan dievaluasi berkala dengan bukti.'],
+            ['Skor mandiri', 'Skor yang diberikan rekanan sendiri. Hanya sebagai pembanding; yang dihitung adalah skor evaluator.'],
+            ['Hasil kategori', "Skor ≥ {$pq['tinggi']}% → boleh pekerjaan Tinggi; ≥ {$pq['menengah']}% → Menengah; ≥ {$pq['rendah']}% → Rendah. Butir kritis bernilai 0 → ditolak."],
+            ['Sertifikat CSMS', 'Terbit otomatis saat PQ disetujui, berlaku '.config('rekana.pq.certificate_years').' tahun, mencantumkan kategori risiko maksimum, dan dapat diverifikasi lewat kode QR.'],
+        ],
         'langkah' => [
-            'Baca kata kunci; setiap kata kunci adalah satu klaim yang harus didukung bukti.',
-            'Tetapkan status: Belum (tidak ada bukti), Sebagian (bukti ada tetapi tidak lengkap atau belum ditetapkan), Terbukti (bukti sahih dan valid).',
-            'Tulis kondisi implementasi secara faktual, termasuk nomor dokumen bila ada.',
-            'Untuk status Belum/Sebagian, tulis RTL yang konkret, lalu ubah menjadi tugas agar terpantau.',
+            'Bila ada kunjungan lapangan, isi tanggal dan catatannya di bagian atas.',
+            'Untuk setiap butir: baca jawaban, buka dokumen atau bukti yang dilampirkan, pilih skor evaluator, dan tulis catatan bila skor berbeda dari skor mandiri.',
+            'Bila bukti kurang, klik "Minta klarifikasi" dan tuliskan dengan jelas apa yang harus dilengkapi.',
+            'Bila semua butir sudah dinilai, klik "Hitung skor dan kirim ke persetujuan" dan tulis ringkasan penilaian.',
+            'Penyetuju (orang lain) membuka halaman yang sama dan klik "Setujui dan terbitkan sertifikat".',
         ],
         'isian' => [
-            ['Kata kunci', 'Potongan deskripsi pemenuhan yang harus dibuktikan.', '"Renstra pengembangan dosen memenuhi 4 unsur" (Indikator 6A).'],
-            ['Status', 'Belum / Sebagian / Terbukti.', 'Sebagian: Renstra SDM ada, tetapi belum memuat analisis beban kerja dosen.'],
-            ['Kondisi implementasi', 'Fakta saat ini dan bukti yang sudah ada.', 'Renstra SDM 2021–2025 ditetapkan SK Rektor No. 12/2021; capaian 2023–2025 dilaporkan di laporan tahunan.'],
-            ['Rencana tindak lanjut (RTL)', 'Tindakan untuk menutup kesenjangan, dengan hasil yang terukur.', 'Menyusun analisis beban kerja dosen per prodi dan menetapkannya sebagai lampiran Renstra SDM paling lambat 30 November.'],
+            ['Skor evaluator', 'Nilai 0–4 berdasarkan bukti, bukan pengakuan.', '3: prosedur LOTO ada, ditandatangani, dan ada catatan pelatihan 2026'],
+            ['Catatan evaluator', 'Alasan singkat, terutama untuk skor rendah.', 'Statistik 2024 tidak mencantumkan jam kerja subkontraktor'],
+            ['Hal yang perlu dilengkapi rekanan', 'Pesan klarifikasi yang dikirim ke portal rekanan.', 'Lampirkan sertifikat SIO operator crane yang masih berlaku'],
+            ['Ringkasan penilaian', 'Kesimpulan untuk penyetuju.', 'Sistem matang; kelemahan di pengawasan subkontraktor, direkomendasikan Menengah'],
         ],
-        'indikator' => [6, 10],
+        'gambar' => 'Halaman penilaian PQ: jawaban rekanan, bukti, skor mandiri, dan skor evaluator per butir.',
         'tips' => [
-            'Status "Terbukti" hanya untuk bukti yang sudah divalidasi di Pustaka Bukti. Bukti draf atau kedaluwarsa tidak dihitung.',
+            'Jangan memberi skor 4 tanpa bukti evaluasi berkala (audit internal, tinjauan manajemen).',
+            'Penolakan karena butir kritis tidak bisa ditutupi oleh skor tinggi di butir lain; ini disengaja.',
         ],
     ],
 
-    'led-sections' => [
-        'judul' => 'Penyusunan LED (Laporan Evaluasi Diri)',
-        'ringkas' => 'Editor narasi LED per sub-indikator. Setiap bagian ditulis PIC, direviu, direvisi, lalu disahkan. Akredia menghitung jumlah kata, cakupan kata kunci, dan sitasi bukti, serta dapat menyisipkan angka hidup dari Data Kinerja.',
+    'app.sertifikat' => [
+        'judul' => 'Sertifikat CSMS',
+        'ringkas' => 'Sertifikat yang terbit dari PQ yang disetujui. Sertifikat menentukan kategori risiko pekerjaan yang boleh diberikan ke rekanan dan berlaku '.config('rekana.pq.certificate_years').' tahun.',
+        'fase' => 'Fase 2: Prakualifikasi',
+        'konsep' => [
+            ['Kategori maksimum', 'Rekanan hanya dapat diundang seleksi untuk pekerjaan dengan kategori risiko sama atau di bawah kategori sertifikatnya.'],
+            ['Verifikasi QR', 'Setiap sertifikat cetak memuat QR yang membuka halaman verifikasi publik, sehingga satpam atau mitra dapat memastikan keasliannya.'],
+            ['Pencabutan', 'Sertifikat dapat dicabut sebelum habis masa berlaku, misalnya setelah insiden berat. Rekanan tidak lagi memenuhi syarat sampai PQ ulang.'],
+        ],
         'langkah' => [
-            'Buka bagian LED dari Butir Kerja atau daftar ini. Baca panel Bantuan untuk petunjuk resmi Panduan LED pada indikator tersebut.',
-            'Tulis narasi mengikuti pola Panduan LED: kebijakan/dasar → implementasi → hasil dan analisis (data, tren, akar masalah) → tindak lanjut perbaikan.',
-            'Sitasi bukti dengan memilih dokumen dari Pustaka Bukti. Pada ekspor, sitasi diganti judul dan URL publik.',
-            'Sisipkan angka hidup, misalnya {{RMDT}} atau {{PDTT}}, agar angka di narasi selalu sama dengan data terbaru.',
-            'Ajukan reviu. Setelah reviewer menyetujui, pimpinan mengesahkan.',
+            'Klik "Cetak" untuk membuka sertifikat siap cetak atau simpan sebagai PDF dari peramban.',
+            'Pantau kolom masa berlaku; sertifikat yang habis dalam 60 hari juga tampil di dasbor.',
+            'Bila perlu, klik "Cabut" dan tulis alasannya.',
         ],
-        'isian' => [
-            ['Narasi', 'Teks LED untuk sub-indikator ini. Jawab setiap kata kunci deskripsi pemenuhan.', 'Contoh pola untuk Indikator 6C: "Pada TS (2024/2025) rasio mahasiswa aktif program sarjana terhadap dosen tetap adalah {{RMDT}} (Tabel II-1.A.1 LKPT). Angka ini memenuhi ketentuan RM/DT ≤ 40. Tiga prodi dengan rasio di atas 40 telah ditindaklanjuti melalui rekrutmen 9 dosen tetap (SK Rektor No. ...)."'],
-            ['Kata kunci', 'Persentase kata kunci deskriptor yang muncul di narasi. Bukan jaminan mutu, tetapi indikator awal kelengkapan.', '8/10 kata kunci → periksa dua yang belum disebut.'],
-            ['Sitasi', 'Jumlah bukti yang dikutip. Setiap klaim penting sebaiknya punya bukti.', 'Minimal satu bukti untuk setiap klaim kebijakan dan satu data untuk setiap klaim capaian.'],
-        ],
-        'indikator' => [],
-        'resmi' => [
-            'Lampiran 4a: Sistematika LED terdiri atas Bab I Pendahuluan (dasar penyusunan, tim penyusun dan tanggung jawabnya, mekanisme kerja), Bab II Laporan Evaluasi Diri (Kriteria 1–4), dan Bab III Penutup.',
-            'Lampiran 4a: A4, Arial 11, spasi 1,15, paling banyak 300 halaman; ringkasan eksekutif ≤ 10 halaman; Pendahuluan ≤ 20 halaman; Penutup ≤ 5 halaman.',
-        ],
+        'gambar' => 'Daftar sertifikat dengan kategori maksimum dan masa berlaku.',
         'tips' => [
-            'Hindari narasi normatif ("PT berkomitmen meningkatkan mutu"). Asesor mencari bukti, angka, dan perbaikan nyata.',
-            'Selalu sebutkan tabel LKPT yang dirujuk agar asesor mudah mencocokkan angka.',
+            'Mulai PQ ulang sekitar dua bulan sebelum sertifikat habis agar rekanan tidak terhenti di tengah kontrak.',
         ],
     ],
 
-    'peta-instrumen' => [
-        'judul' => 'Peta Instrumen IAPT 4.1',
-        'ringkas' => 'Peta seluruh kriteria, indikator, dan sub-indikator varian instrumen proyek, lengkap dengan penanda syarat perlu, metrik, tabel LKPT, bukti utama, dan kata kunci deskriptor. Gunakan untuk memahami struktur instrumen sebelum membagi tugas.',
+    'app.rencana-pekerjaan' => [
+        'judul' => 'Rencana Pekerjaan & Risiko',
+        'ringkas' => 'Titik awal setiap pekerjaan kontraktor. User (pemilik pekerjaan) menuliskan lingkup dan aktivitas, Rekana menghitung kategori risiko dan menentukan kewajiban CSMS yang berlaku.',
+        'fase' => 'Fase 1: Penilaian Risiko',
+        'konsep' => [
+            ['Matriks 5×5', 'Nilai risiko per aktivitas = kemungkinan (1–5) × keparahan (1–5). Nilai ≥ '.config('rekana.risk.high_from').' = Tinggi, ≥ '.config('rekana.risk.medium_from').' = Menengah, di bawahnya Rendah. Kategori pekerjaan = aktivitas dengan risiko tertinggi.'],
+            ['Bahaya pemaksa Tinggi', 'Ruang terbatas, amonia, kerja panas, ketinggian, H2S, dan intervensi sumur langsung menjadikan pekerjaan Tinggi, berapa pun nilai matriksnya.'],
+            ['Mode kontrak IOGP', 'Mode 1: owner mengelola K3 dan kontraktor mengikuti. Mode 2: kontraktor memakai sistem K3-nya tetapi tunduk pada aturan owner. Mode 3: kontraktor mengelola penuh (biasanya proyek terpisah). Mode menentukan kebutuhan bridging document.'],
+            ['Kewajiban', 'Setelah dinilai, Rekana menampilkan kewajiban: kategori sertifikat minimum, HSE Plan, kick-off meeting, bridging document, induksi, dan pengawasan.'],
+        ],
         'langkah' => [
-            'Mulai dari 4 kriteria: Budaya Mutu, Relevansi (Pendidikan, Penelitian, PkM), Akuntabilitas, dan Diferensiasi Misi.',
-            'Perhatikan penanda "syarat perlu"; butir ini menentukan status, bukan sekadar menambah skor.',
-            'Gunakan pemilih indikator di panel Bantuan untuk membaca teks resmi Lampiran 3c (aspek penilaian, sumber data, deskripsi Terakreditasi dan Unggul) serta petunjuk Panduan LED.',
+            'Klik "Buat Rencana pekerjaan". Isi judul, area, mode kontrak, rencana tanggal, perkiraan jumlah pekerja, dan lingkup.',
+            'Tambahkan baris aktivitas: satu baris untuk setiap kegiatan berbahaya, pilih jenis bahaya, kemungkinan, keparahan, dan pengendalian awal.',
+            'Simpan, lalu klik "Nilai risiko". Rekana menampilkan kategori risiko dan daftar kewajiban.',
+            'Bila pekerjaan dilelang, klik "Buka seleksi" untuk membuat paket seleksi dengan batas unggah HSE Plan dan bobot HSE.',
         ],
         'isian' => [
-            ['Sasaran mutu', 'Setiap indikator dikelompokkan menurut sasaran: Masukan, Proses, Luaran/Capaian, dan Dampak.', 'Indikator 6 (SDM) = Masukan; Indikator 12 (penyelesaian studi) = Luaran; Indikator 14 (pengakuan lulusan) = Dampak.'],
-            ['SP Terakreditasi / SP Unggul', 'Penanda syarat perlu. Satu saja gagal, status itu tidak dapat diperoleh.', 'Indikator 4: 100% prodi terakreditasi adalah syarat perlu Terakreditasi.'],
+            ['Judul pekerjaan', 'Nama singkat yang dipakai di kontrak dan izin.', 'Overhaul oven tunnel lini biskuit 2'],
+            ['Mode kontrak IOGP', 'Siapa yang mengelola sistem K3 di lokasi.', 'Mode 2 untuk kontraktor mesin bersertifikat ISO 45001'],
+            ['Aktivitas', 'Satu kegiatan berbahaya per baris.', 'Pengelasan rangka conveyor di dalam ruang produksi'],
+            ['Bahaya', 'Jenis bahaya utama aktivitas.', 'Kerja panas (las, gerinda, potong)'],
+            ['Kemungkinan / Keparahan', 'Skala 1–5 sebelum pengendalian tambahan.', 'Kemungkinan 3, keparahan 4 → nilai 12 (Menengah), tetapi kerja panas memaksa Tinggi'],
+            ['Pengendalian', 'Pengendalian awal yang direncanakan.', 'Fire blanket, APAR, fire watch, izin kerja panas'],
         ],
-        'indikator' => [1, 4, 7, 11],
-        'resmi' => [
-            'Lampiran 2: IAPT 4.1 memiliki 4 kriteria dan 39 indikator; setiap kriteria dinilai menurut sasaran mutu masukan, proses, luaran/capaian, dan dampak.',
-        ],
+        'gambar' => 'Daftar rencana pekerjaan dengan kategori risiko hasil penilaian.',
         'tips' => [
-            'Akredia meringkas rumusan sub-indikator dari rancangan aplikasi. Sebelum pengajuan, cocokkan kembali dengan Lampiran 3 resmi varian institusi Anda (teks resmi 3c tersedia di panel ini).',
+            'Pisahkan aktivitas berbeda bahaya ke baris berbeda; menggabungkannya menyembunyikan bahaya tertinggi.',
+            'Bila ada subkontraktor, aktifkan "Ada subkontraktor" agar kewajiban pengawasan subkontraktor ikut tercantum.',
         ],
     ],
 
-    'simulasi-penilaian' => [
-        'judul' => 'Simulasi Penilaian (What-if)',
-        'ringkas' => 'Simulasikan penilaian asesor: centang sub-indikator yang dianggap memenuhi untuk melihat apakah status Terakreditasi atau Unggul tercapai. Berguna untuk memilih perbaikan dengan dampak terbesar.',
+    'app.seleksi' => [
+        'judul' => 'Seleksi Rekanan',
+        'ringkas' => 'Paket seleksi dari rencana pekerjaan. Hanya rekanan dengan sertifikat CSMS yang masih berlaku dan kategori cukup yang dapat diundang. Nilai akhir menggabungkan nilai HSE Plan dan nilai teknis.',
+        'fase' => 'Fase 3: Seleksi',
+        'konsep' => [
+            ['Syarat undangan', 'Sertifikat aktif, kategori maksimum ≥ kategori pekerjaan, dan registrasi tidak di daftar hitam.'],
+            ['HSE Plan', 'Rencana K3 khusus proyek yang diunggah rekanan dan dinilai dengan rubrik 0–4 per kriteria: organisasi, risiko (JSA/HIRADC), kompetensi, peralatan, tanggap darurat, dan pengendalian khusus lokasi.'],
+            ['Ambang lulus HSE', 'Penawaran dengan nilai HSE Plan di bawah ambang gugur, berapa pun harganya.'],
+        ],
         'langkah' => [
-            'Mulai dengan menyimulasikan kondisi jujur saat ini (hanya yang benar-benar berbukti).',
-            'Centang semua syarat perlu untuk melihat skor maksimal bila syarat perlu dipenuhi.',
-            'Uji skenario: "jika 3 sub-indikator proses diperbaiki, apakah ≥ 80%?"',
+            'Buka paket seleksi, lalu klik "Undang rekanan". Daftar hanya berisi rekanan yang memenuhi syarat.',
+            'Rekanan mengunggah HSE Plan di portal sebelum batas waktu.',
+            'Pada tab Penawaran, klik "Nilai HSE Plan" untuk setiap rekanan: beri skor per kriteria, nilai teknis, dan harga.',
+            'Klik "Tetapkan pemenang" pada penawaran terbaik, isi nomor kontrak, tanggal, dan nilai. Kontrak terbentuk otomatis.',
         ],
-        'isian' => [
-            ['Deskriptor Terakreditasi / Unggul', 'Kalimat pemenuhan yang dinilai asesor. Skor 1 bila terpenuhi, 0 bila tidak.', '62 deskriptor; 50 terpenuhi → 80,6%, cukup bila tidak ada syarat perlu yang gagal.'],
-        ],
-        'indikator' => [],
-        'resmi' => [
-            'Lampiran 2: Skor total adalah persentase deskriptor bernilai 1. Ambang kelulusan 80% untuk kedua status, ditambah seluruh syarat perlu status tersebut.',
-        ],
+        'gambar' => 'Daftar paket seleksi dan status masing-masing.',
         'tips' => [
-            'Simulasi bukan prediksi resmi. Asesor dapat menilai bukti tidak sahih bila tidak dapat diakses atau tidak ditetapkan pejabat berwenang.',
+            'Bila tidak ada rekanan yang muncul di daftar undangan, periksa apakah sertifikat mereka masih berlaku dan kategorinya cukup.',
         ],
     ],
 
-    /* ------------------------------------------------------------------ Pustaka Bukti */
-
-    'documents' => [
-        'judul' => 'Dokumen Bukti',
-        'ringkas' => 'Pustaka seluruh bukti akreditasi: kebijakan, SK, pedoman, renstra, laporan, notulen, data, sertifikat, dan kerja sama. Setiap dokumen punya kode, versi, pemilik, masa berlaku, tingkat kerahasiaan, dan status validasi. Bukti yang valid dan publik dapat dikutip di LED dengan URL yang bisa dibuka asesor.',
+    'app.seleksi.view' => [
+        'judul' => 'Rincian Seleksi',
+        'ringkas' => 'Rincian satu paket seleksi: rekanan yang diundang, HSE Plan yang masuk, penilaian, dan penetapan pemenang.',
+        'fase' => 'Fase 3: Seleksi',
+        'konsep' => [
+            ['Nilai akhir', 'Nilai akhir = bobot HSE × nilai HSE Plan + (100% − bobot HSE) × nilai teknis. Bobot ditetapkan saat membuka seleksi.'],
+        ],
         'langkah' => [
-            'Unggah berkas (PDF disarankan) atau tempel URL, lalu isi metadata selengkap mungkin.',
-            'Ajukan validasi. Validator memeriksa keabsahan: ditetapkan pejabat berwenang, bernomor, bertanggal, dan masih berlaku.',
-            'Tautkan dokumen yang valid ke butir kerja dan sitasi di LED.',
-            'Centang "Tampilkan di daftar bukti publik" untuk dokumen yang akan dibuka asesor tanpa login.',
+            'Klik "Undang rekanan" dan pilih rekanan yang memenuhi syarat.',
+            'Setelah HSE Plan masuk, klik "Nilai HSE Plan" di baris penawaran dan isi skor tiap kriteria, nilai teknis 0–100, harga, dan catatan.',
+            'Klik "Tetapkan pemenang" pada penawaran yang lulus ambang dengan nilai akhir terbaik.',
         ],
         'isian' => [
-            ['Judul dokumen', 'Judul resmi sesuai dokumen.', 'Peraturan Rektor tentang Kebijakan Sistem Penjaminan Mutu Internal'],
-            ['Jenis', 'Kebijakan, Peraturan, SK, Pedoman, Renstra, Laporan, Notulen, Data, Sertifikat, Kerja sama, Laman, atau Lainnya.', 'Kebijakan SPMI → Kebijakan; SK tim penjaminan mutu → SK.'],
-            ['Nomor dokumen', 'Nomor resmi. Dokumen tanpa nomor biasanya dianggap belum ditetapkan.', '015/PR/UNX/III/2024'],
-            ['Tanggal dokumen / Disahkan oleh', 'Tanggal penetapan dan pejabat yang menandatangani.', '12 Maret 2024, Rektor'],
-            ['Unit pemilik', 'Unit yang memelihara dokumen; menentukan siapa boleh melihat dokumen rahasia.', 'Lembaga Penjaminan Mutu'],
-            ['Berlaku sampai', 'Kosongkan bila tidak kedaluwarsa. Bukti kedaluwarsa tidak dihitung.', 'Sertifikat ISO 9001 berlaku sampai 20 Agustus 2027.'],
-            ['Kerahasiaan', 'Rahasia hanya dapat dilihat unit pemilik, manajer, pimpinan, dan reviewer.', 'Laporan audit keuangan internal → Rahasia; Kebijakan SPMI → Internal/Publik.'],
-            ['Uraian singkat', 'Ringkas isi dan relevansinya dengan indikator.', 'Menetapkan siklus PPEPP dan standar mutu akademik/non-akademik; bukti Indikator 1 dan 2.'],
+            ['Nilai teknis (0-100)', 'Nilai dari tim teknis atau pengadaan.', '82'],
+            ['Harga penawaran (Rp)', 'Untuk catatan; tidak masuk rumus nilai akhir.', '1.250.000.000'],
+            ['Nomor kontrak', 'Nomor dokumen kontrak/PO.', 'GF-GRS/PO/2026/0418'],
         ],
-        'indikator' => [1, 2, 3],
-        'resmi' => [
-            'Lampiran 4a: Bukti dapat berupa dokumen, laman URL, atau lainnya. Contoh bukti Kriteria 1: kebijakan SPMI; pedoman siklus PPEPP; standar mutu; pedoman pendokumentasian dan organisasi SPMI; implementasi PPEPP; laporan tahunan SPMI dan RTM; sertifikat akreditasi PT dan prodi.',
-            'Lampiran 2: Data yang tidak tersedia di PD Dikti dibuktikan dengan URL ke dokumen bukti.',
+        'gambar' => 'Rincian paket seleksi dengan tabel penawaran dan nilai HSE Plan.',
+    ],
+
+    'app.kontrak' => [
+        'judul' => 'Kontrak & Mobilisasi',
+        'ringkas' => 'Kontrak aktif dengan rekanan dan kesiapan mobilisasinya: kick-off, bridging document, induksi, kartu akses, hingga izin mulai kerja.',
+        'fase' => 'Fase 4: Mobilisasi',
+        'konsep' => [
+            ['Kick-off meeting', 'Pertemuan awal owner–kontraktor untuk menyepakati HSE Plan, jalur komunikasi, dan aturan lokasi. Wajib untuk pekerjaan Tinggi, atau Menengah dengan Mode 2.'],
+            ['Bridging document', 'Dokumen yang menjembatani sistem K3 owner dan kontraktor: siapa menerbitkan izin, siapa menginvestigasi insiden, prosedur mana yang dipakai. Wajib pada kondisi yang sama dengan kick-off.'],
+            ['Izin mulai kerja', 'Gerbang terakhir sebelum kontrak boleh mengajukan izin kerja harian. Diberikan setelah kick-off, induksi, dan kartu akses terpenuhi.'],
         ],
+        'langkah' => [
+            'Buka kontrak baru hasil seleksi (atau buat langsung bila tanpa seleksi).',
+            'Klik "Catat kick-off": isi notulen dan, bila wajib, bridging document.',
+            'Jadwalkan induksi untuk pekerja kontraktor di menu Induksi.',
+            'Klik "Terbitkan kartu akses". Kartu hanya terbit untuk pekerja yang lulus induksi dan surat sehatnya berlaku.',
+            'Klik "Izinkan mulai kerja". Bila ada syarat belum lengkap, Rekana menampilkan daftarnya.',
+            'Gunakan "Cetak kartu akses" untuk mencetak semua kartu kontrak sekaligus.',
+        ],
+        'isian' => [
+            ['Notulen kick-off', 'Kesepakatan utama.', 'Jam kerja 07.00–16.00; izin kerja panas ditandatangani supervisor HSE GF; titik kumpul TK-2'],
+            ['Bridging document', 'Pembagian tanggung jawab K3.', 'Izin kerja: sistem owner. Investigasi insiden: bersama, dipimpin owner. APD: disediakan kontraktor sesuai standar owner.'],
+        ],
+        'gambar' => 'Daftar kontrak dengan status mobilisasi dan kemajuan pekerjaan.',
         'tips' => [
-            'Asesor tidak dapat membuka folder Google Drive yang dikunci. Gunakan URL publik Akredia atau pastikan izin aksesnya terbuka.',
-            'Satu dokumen boleh dipakai untuk banyak indikator; cukup unggah sekali lalu tautkan berkali-kali.',
+            'Masa berlaku kartu akses = tanggal paling awal di antara akhir kontrak, surat sehat, dan masa berlaku induksi.',
         ],
     ],
 
-    'link-checks' => [
-        'judul' => 'Pemeriksaan Tautan',
-        'ringkas' => 'Akredia memeriksa secara berkala apakah URL bukti masih dapat dibuka (HTTP 200). Tautan yang gagal beruntun perlu diperbaiki sebelum pengajuan karena asesor menilai dari tautan tersebut.',
+    'app.induksi' => [
+        'judul' => 'Induksi & Orientasi',
+        'ringkas' => 'Catatan sesi induksi K3 untuk pekerja kontraktor sebelum masuk lokasi, lengkap dengan topik, peserta, nilai pre-test dan post-test.',
+        'fase' => 'Fase 4: Mobilisasi',
+        'konsep' => [
+            ['Kelulusan', 'Peserta lulus bila nilai post-test ≥ nilai lulus. Hanya pekerja lulus yang dapat diberi kartu akses.'],
+            ['Masa berlaku', 'Induksi berlaku sejumlah bulan tertentu (biasanya 6 atau 12). Setelah habis, pekerja perlu induksi ulang.'],
+        ],
         'langkah' => [
-            'Urutkan menurut "Gagal beruntun" lalu perbaiki yang terbanyak.',
-            'Galat 403/401 biasanya berarti izin akses (mis. Google Drive privat). Galat 404 berarti berkas dipindah atau dihapus.',
-            'Setelah diperbaiki, jalankan pemeriksaan ulang.',
+            'Klik "Buat Induksi", isi judul, tanggal, kontrak, area, dan pemateri.',
+            'Tentukan nilai lulus post-test dan masa berlaku dalam bulan.',
+            'Centang topik yang dibawakan.',
+            'Tambahkan peserta: pilih pekerja kontraktor, isi nilai pre-test dan post-test.',
+            'Simpan. Status lulus dihitung otomatis.',
         ],
         'isian' => [
-            ['URL', 'Alamat bukti yang diperiksa.', 'https://lpm.univ.ac.id/dokumen/kebijakan-spmi.pdf'],
-            ['HTTP', 'Kode jawaban server. 200 = baik; 3xx = dialihkan; 4xx/5xx = gagal.', '404 → berkas tidak ditemukan.'],
+            ['Nilai lulus post-test', 'Ambang lulus 0–100.', '70'],
+            ['Berlaku (bulan)', 'Masa berlaku induksi.', '12'],
+            ['Topik', 'Materi yang dibawakan.', 'K3 umum, bahaya amonia, GMP dan halal, izin kerja dan LOTO'],
         ],
-        'indikator' => [26],
+        'gambar' => 'Daftar sesi induksi dengan jumlah peserta dan kelulusan.',
         'tips' => [
-            'Gunakan laman resmi PT (bukan tautan pendek) agar tautan stabil selama masa asesmen.',
+            'Untuk pabrik pangan, selalu sertakan topik keamanan pangan, kaca dan plastik keras, serta halal.',
         ],
     ],
 
-    /* ------------------------------------------------------------------ Data Kinerja & LKPT */
-
-    'tabel-lkpt' => [
-        'judul' => 'Tabel LKPT',
-        'ringkas' => 'Pratinjau tabel Laporan Kinerja Perguruan Tinggi (Lampiran 4b) yang disusun otomatis dari Data Kinerja untuk TS proyek. Gunakan untuk memeriksa angka sebelum mengisi atau mencocokkan LKPT di SAPTO.',
+    'app.kartu-akses' => [
+        'judul' => 'Kartu Akses Pekerja',
+        'ringkas' => 'Kartu identitas pekerja kontraktor dengan QR verifikasi. Satpam memindai QR di gerbang untuk memastikan kartu masih aktif.',
+        'fase' => 'Fase 4: Mobilisasi',
+        'konsep' => [
+            ['Masa berlaku', 'Tanggal paling awal di antara akhir kontrak, surat sehat, dan induksi. Kartu otomatis kedaluwarsa setelahnya.'],
+            ['Blokir', 'Menonaktifkan kartu seketika, misalnya karena pelanggaran aturan keselamatan. Pekerja tidak dapat dimasukkan ke izin kerja.'],
+        ],
         'langkah' => [
-            'Pastikan data dosen, statistik mahasiswa, kohort, tracer, survei, prestasi, publikasi, HKI, rekognisi, dan audit keuangan sudah diisi atau diimpor.',
-            'Cocokkan setiap tabel dengan data PD Dikti. Bila berbeda, catat di menu Rekonsiliasi dan perbaiki di sumbernya (PD Dikti atau data internal).',
-            'Unduh XLSX dari Laporan & Ekspor untuk arsip tim.',
+            'Kartu diterbitkan dari halaman Kontrak. Di sini owner mencetak ulang atau memblokir.',
+            'Klik "Cetak" untuk mencetak satu kartu.',
+            'Klik "Blokir" dan tulis alasannya bila pekerja melanggar.',
+        ],
+        'gambar' => 'Daftar kartu akses dengan masa berlaku dan status.',
+    ],
+
+    'app.izin-kerja' => [
+        'judul' => 'Izin Kerja (Permit to Work)',
+        'ringkas' => 'Izin harian untuk pekerjaan berbahaya: kerja panas, ruang terbatas, ketinggian, LOTO, dan kerja umum. Izin mengikat kontrak, area, waktu, pekerja, daftar periksa, dan uji gas.',
+        'fase' => 'Fase 5: Pelaksanaan',
+        'konsep' => [
+            ['Alur izin', 'Draf → Diajukan → Disetujui → Aktif (di lokasi) → Ditutup. Izin dapat dibatalkan kapan saja sebelum ditutup.'],
+            ['Syarat pengajuan', 'Kontrak sudah diizinkan mulai kerja, sertifikat CSMS berlaku, semua pekerja punya kartu aktif untuk kontrak itu, daftar periksa lengkap, durasi ≤ '.$maxHours.' jam.'],
+            ['Uji gas', "Wajib untuk ruang terbatas (O2 {$gas['o2_min']}–{$gas['o2_max']}%, LEL ≤ {$gas['lel_max']}%, H2S ≤ {$gas['h2s_max']} ppm, CO ≤ {$gas['co_max']} ppm) dan kerja panas di area Bahaya (LEL)."],
+            ['Pemohon dan penyetuju', 'Penyetuju tidak boleh orang yang sama dengan pemohon, dan harus berperan Pengawas, Pemilik Pekerjaan, Pimpinan, atau Administrator.'],
+        ],
+        'langkah' => [
+            'Klik "Buat Izin kerja". Pilih kontrak, jenis izin, dan area.',
+            'Isi uraian pekerjaan, lokasi rinci, waktu mulai dan selesai (maksimal satu shift).',
+            'Pilih pekerja yang tercakup. Hanya pekerja kontraktor itu yang tampil.',
+            'Tulis langkah kerja dan bahaya, lalu centang semua butir daftar periksa setelah benar-benar diperiksa di lapangan.',
+            'Untuk ruang terbatas atau kerja panas di area bahaya, isi hasil uji gas. Untuk LOTO dan ruang terbatas, tulis titik isolasi.',
+            'Klik "Ajukan". Bila ada syarat kurang, Rekana menampilkan daftarnya.',
+            'Penyetuju klik "Setujui", lalu pengawas di lokasi klik "Aktifkan di lokasi" saat pekerjaan dimulai.',
+            'Setelah selesai dan area aman, klik "Tutup izin" dan tulis catatan penutupan.',
         ],
         'isian' => [
-            ['Tabel 1 Akreditasi Program Studi (Ind. 4)', 'Jumlah prodi per status/peringkat dan jenjang.', 'Unggul 3, Baik Sekali 9, Baik 2, Tidak terakreditasi 0 → 100% terakreditasi.'],
-            ['Tabel II-1.A.1 Rasio Dosen terhadap Mahasiswa (Ind. 6C)', 'Jumlah mahasiswa program utama dan dosen tetap per prodi pada TS.', '820 mahasiswa : 22 dosen tetap = 37,3.'],
-            ['Tabel II-1.A.4 / II-1.A.2 Dosen tetap dan tidak tetap (Ind. 7A, 7B)', 'Jumlah dosen per pendidikan tertinggi per prodi.', 'Prodi Akuntansi: 3 doktor, 9 magister; DTT 4 orang.'],
-            ['Tabel II-1.C.1 Jabatan akademik (Ind. 11)', 'Jumlah dosen tetap menurut jabatan GB, LK, L, AA.', 'GB 4, LK 30, L 61, AA 40 dari 160 DT → DTJA 84,4%.'],
-            ['Tabel II-1.C.2–C.6 Kelulusan (Ind. 12A)', 'Kohort masuk dan lulus: tepat masa tempuh dan ≤ 2× masa tempuh.', 'Masuk TS-3: 400; lulus tepat waktu 172 → PKMTK 43%.'],
-            ['Tabel II-1.D.2 Kepuasan pengguna (Ind. 14B)', 'Persentase SB/B/C/K untuk 7 aspek.', 'Etika: SB 45%, B 45%, C 10%, K 0%.'],
-            ['Tabel 2c Penurunan mahasiswa baru (Ind. 15A)', 'Mahasiswa baru TS-4 s.d. TS per prodi dan persentase penurunan.', 'Rerata penurunan 3,2% → memenuhi PPM ≤ 20%.'],
-            ['Tabel 24 Kepuasan pemangku kepentingan (Ind. 34)', 'Instrumen, responden, dan hasil SB/B/C/KB per kelompok.', 'Mahasiswa: 1.240 responden, SB+B 81%.'],
-            ['Tabel 25 Audit eksternal keuangan (Ind. 35)', 'Lembaga audit, tahun, dan opini.', 'KAP XYZ, 2024, Wajar Tanpa Pengecualian.'],
+            ['Uraian pekerjaan', 'Pekerjaan spesifik hari ini.', 'Las ulang dudukan motor conveyor C-04'],
+            ['Lokasi rinci', 'Titik tepat di dalam area.', 'Lini biskuit 2, sisi timur, dekat panel MCC-2'],
+            ['Langkah kerja dan bahaya', 'Ringkasan JSA.', '1) Isolasi motor (LOTO) 2) Pasang fire blanket 3) Las 4) Fire watch 30 menit'],
+            ['LEL (%)', 'Hasil detektor gas mudah terbakar.', '0'],
+            ['O2 (%)', 'Kadar oksigen ruang terbatas.', '20,8'],
+            ['Titik isolasi energi', 'Daftar titik isolasi dan nomor gembok.', 'MCC-2 breaker C04 (gembok #17); katup steam V-112 (gembok #18)'],
         ],
-        'indikator' => [4, 6, 7, 11, 12, 14, 15, 18, 23, 34, 35],
-        'lkpt' => ['Tabel 1', 'Tabel II-1.A.1', 'Tabel II-1.A.2', 'Tabel II-1.A.3', 'Tabel II-1.A.4', 'Tabel 23', 'Tabel II-1.C.1–C.6', 'Tabel II-1.D.2–D.4', 'Tabel 2c', 'Tabel II-2.C.2', 'Tabel 21', 'Tabel 22a/22b', 'Tabel 24', 'Tabel 25'],
-        'resmi' => [
-            'Lampiran 4b: Dosen tetap adalah dosen yang bekerja penuh waktu pada perguruan tinggi, memenuhi beban kerja 12 sks atau lebih, dan memiliki jabatan akademik.',
-            'Lampiran 4b: Jumlah mahasiswa adalah mahasiswa (reguler dan transfer) yang terdaftar di PD Dikti selama masa tempuh kurikulum pada program utama. Program utama PT akademik umumnya program sarjana.',
-            'Lampiran 4b: Huruf penanda pada tabel kelulusan (mis. d1, e1, f1) harus tetap dicantumkan.',
-        ],
+        'gambar' => 'Daftar izin kerja berwarna menurut jenis dan status.',
         'tips' => [
-            'Sumber utama LKPT adalah PD Dikti. Bila angka internal lebih baik daripada PD Dikti, yang dipakai asesor tetap PD Dikti. Perbaiki pelaporan PD Dikti jauh sebelum TS dikunci.',
+            'Jangan mencentang daftar periksa dari kantor. Centang di lokasi bersama pemohon.',
+            'Pekerjaan lebih dari satu shift memerlukan izin baru per shift agar uji gas dan kondisi lokasi diperiksa ulang.',
         ],
     ],
 
-    'impor-data' => [
-        'judul' => 'Impor Data Kinerja & PD Dikti',
-        'ringkas' => 'Masukkan data dalam jumlah besar dari XLSX/CSV: dosen, statistik mahasiswa per prodi per tahun, kohort kelulusan, publikasi, dan rekap PD Dikti untuk rekonsiliasi. Unduh templat agar nama kolom sesuai.',
+    'app.pengguna' => [
+        'judul' => 'Pengguna & Peran',
+        'ringkas' => 'Daftar pengguna internal owner dan perannya. Peran menentukan siapa boleh menilai PQ, menyetujui sertifikat, menyetujui izin kerja, atau hanya melihat.',
+        'fase' => 'Pengaturan',
+        'konsep' => [
+            ['Peran', 'Administrator Sistem (semua), Pimpinan (persetujuan akhir), User/Pemilik Pekerjaan (rencana pekerjaan dan izin), Pengadaan (seleksi dan kontrak), Tim Evaluator HSE (menilai PQ dan HSE Plan), Pengawas Lapangan (izin kerja), Pengamat (baca saja).'],
+            ['Area tanggung jawab', 'Opsional; membatasi fokus pengawas pada satu area.'],
+        ],
         'langkah' => [
-            'Pilih jenis data lalu unduh templat.',
-            'Salin data dari ekspor PD Dikti/SISTER/SIAKAD ke templat tanpa mengubah judul kolom.',
-            'Unggah berkas. Baris dengan galat dilaporkan nomor barisnya; perbaiki lalu unggah ulang (data dicocokkan sehingga tidak dobel).',
+            'Klik "Buat Pengguna", isi nama dan surel. Bila surel sudah terdaftar, akun yang ada ditautkan.',
+            'Pilih peran dan jabatan.',
+            'Nonaktifkan pengguna yang pindah tugas alih-alih menghapusnya, agar jejak audit tetap utuh.',
         ],
         'isian' => [
-            ['Dosen', 'Kolom nidn, nama, kode_prodi, status (tetap/tidak_tetap), pendidikan (S1/S2/S3), jabatan (gb/lk/l/aa/none), serdos (1/0), aktif (1/0). Dicocokkan dengan NIDN.', '0412078801, Dr. Sari Wulandari, 61201, tetap, S3, lk, 1, 1'],
-            ['Statistik mahasiswa', 'Satu baris per prodi per tahun: pendaftar, mahasiswa_baru, mahasiswa_aktif, lulusan, luar_prodi_10sks, rerata_masa_studi_bulan, rerata_ipk.', '61201, 2024, 1350, 310, 1180, 265, 96, 50, 3,42'],
-            ['Kohort', 'Satu baris per prodi per tahun masuk: jumlah_masuk, lulus_tepat_waktu, lulus_dua_kali_masa, masih_aktif, keluar.', '61201, 2020, 300, 141, 0, 22, 18 (S1 masuk TS-4, dihitung sampai akhir TS)'],
-            ['Publikasi', 'nidn, tahun, judul, jenis (jurnal_intl_bereputasi, jurnal_intl, jurnal_nas_terakreditasi, jurnal_nas, seminar_intl, seminar_nas, media_massa), kategori (penelitian/pkm), media, sitasi, url.', '0412078801, 2024, "Model ...", jurnal_nas_terakreditasi, penelitian, Jurnal Akuntansi (Sinta 2), 4, https://doi.org/...'],
-            ['Rekap PD Dikti', 'kode metrik atau variabel, prodi (kode PD Dikti atau kosong untuk institusi), nilai_pddikti.', 'RMDT, , 38,9'],
+            ['Surel', 'Alamat surel kerja untuk masuk.', 'hse.officer@garudafood.example'],
+            ['Peran', 'Wewenang di Rekana.', 'Pengawas Lapangan (HSE Officer)'],
+            ['Jabatan', 'Jabatan di organisasi.', 'HSE Officer Utilitas'],
         ],
-        'indikator' => [6, 7, 11, 12, 18],
-        'tips' => [
-            'Gunakan titik atau koma desimal secara konsisten dalam satu berkas.',
-            'Kode prodi harus sama dengan Kode PD Dikti di menu Program studi.',
-        ],
+        'gambar' => 'Daftar pengguna owner dengan peran berwarna.',
     ],
 
-    'lecturers' => [
-        'judul' => 'Data Dosen',
-        'ringkas' => 'Daftar dosen beserta homebase, status (tetap/tidak tetap), pendidikan tertinggi, jabatan akademik, dan sertifikasi. Data ini menghasilkan metrik RM/DT, kecukupan dosen per prodi, PDTT, persentase doktor, dan DTJA.',
-        'langkah' => [
-            'Impor dari PD Dikti/SISTER melalui Impor Data agar sama dengan data resmi.',
-            'Periksa status dosen tetap: penuh waktu, beban kerja ≥ 12 sks, dan memiliki jabatan akademik (definisi Lampiran 4b).',
-            'Pastikan setiap prodi memiliki minimal 5 dosen (syarat perlu Indikator 7A).',
-        ],
-        'isian' => [
-            ['NIDN / NUPTK', 'Nomor induk dosen sesuai PD Dikti; dipakai untuk mencocokkan data.', '0412078801'],
-            ['Homebase', 'Prodi tempat dosen tercatat di PD Dikti.', 'S1 Akuntansi'],
-            ['Status', 'Tetap atau tidak tetap. Dosen tidak tetap dihitung di PDTT = NDTT / (NDTT + NDT) × 100%.', 'Dosen praktisi kontrak per semester → tidak tetap.'],
-            ['Pendidikan tertinggi', 'S1, S2/Magister, S3/Doktor. Dipakai untuk kualifikasi minimal Magister (7A) dan persentase doktor (Unggul ≥ 20%).', 'S3'],
-            ['Jabatan akademik', 'Guru Besar, Lektor Kepala, Lektor, Asisten Ahli, atau belum ada. Dipakai untuk DTJA (Ind. 11) dan Guru Besar prodi doktor (7C).', 'Lektor Kepala'],
-            ['Bersertifikat pendidik', 'Centang bila memiliki serdos.', 'Ya'],
-        ],
-        'indikator' => [6, 7, 11],
-        'lkpt' => ['Tabel II-1.A.1', 'Tabel II-1.A.2', 'Tabel II-1.A.3', 'Tabel II-1.A.4', 'Tabel II-1.C.1'],
-        'resmi' => [
-            'Lampiran 3c Ind. 6C: RM/DT ≤ 40 untuk Terakreditasi; 20 < RM/DT < 40 untuk Unggul.',
-            'Lampiran 3c Ind. 7A: minimal 5 dosen per program studi (syarat perlu). Unggul: dosen tetap berkualifikasi doktor sekurang-kurangnya 20%.',
-            'Lampiran 3c Ind. 7B: PDTT ≤ 40% (Terakreditasi), < 40% (Unggul). Ind. 7C: setiap prodi doktor minimal 2 Guru Besar (Terakreditasi), > 50% Guru Besar (Unggul).',
-            'Lampiran 3c Ind. 11: DTJA = ((NDTGB + NDTLK + NDTL + NDTAA) / NDT) × 100%; universitas/institut ≥ 60%, sekolah tinggi ≥ 30% (syarat perlu). Unggul: dosen GB + LK sekurang-kurangnya 10% dari dosen tetap.',
-        ],
-        'tips' => [
-            'Dosen dengan NIDK/NUP harus jelas status kepegawaiannya agar tidak terhitung ganda.',
-        ],
-    ],
-
-    'program-year-stats' => [
-        'judul' => 'Statistik Mahasiswa per Prodi per Tahun',
-        'ringkas' => 'Rekap tahunan per prodi: pendaftar, mahasiswa baru, mahasiswa aktif, lulusan, mahasiswa yang mengambil ≥ 10 sks di luar prodi, rerata masa studi, dan IPK. Dasar perhitungan RM/DT, penurunan lulusan (RPL), penurunan mahasiswa baru (PPM), dan pembelajaran di luar prodi.',
-        'langkah' => [
-            'Isi minimal TS-4 s.d. TS agar tren 5 tahun (Tabel 2c) dapat dihitung.',
-            'Mahasiswa aktif = terdaftar di PD Dikti pada semester ganjil TS, termasuk transfer.',
-            'Kolom ≥ 10 sks di luar prodi diisi dari data MBKM/pertukaran/magang yang diakui.',
-        ],
-        'isian' => [
-            ['Tahun', 'Tahun awal tahun akademik.', '2024 untuk 2024/2025'],
-            ['Mahasiswa baru', 'Mahasiswa baru reguler dan transfer pada tahun itu.', '310'],
-            ['Mahasiswa aktif', 'Student body pada TS.', '1.180'],
-            ['Lulusan', 'Jumlah lulusan pada tahun akademik itu (untuk RPL).', '265'],
-            ['Mahasiswa ≥ 10 sks di luar prodi', 'Mahasiswa yang memperoleh minimal 10 sks di luar prodi (Ind. 10B, Tabel 23).', '96 (8,1% dari mahasiswa aktif)'],
-            ['Rerata masa studi (bulan)', 'Rerata lama studi lulusan.', '50 bulan'],
-        ],
-        'indikator' => [6, 10, 12, 15],
-        'lkpt' => ['Tabel II-1.A.1', 'Tabel 23', 'Tabel II-1.C.4', 'Tabel 2c'],
-        'resmi' => [
-            'Lampiran 3c Ind. 12A: RPL ≤ 20% (sekolah tinggi ≤ 30%) untuk Terakreditasi.',
-            'Lampiran 3c Ind. 15A: PPM (penurunan mahasiswa baru) ≤ 20% untuk Terakreditasi, < 20% untuk Unggul.',
-            'Lampiran 3c Ind. 10B: persentase mahasiswa yang memperoleh minimal 10 sks di luar prodi pada TS; deskripsi Unggul > 10%.',
-        ],
-    ],
-
-    'student-cohorts' => [
-        'judul' => 'Kohort Kelulusan',
-        'ringkas' => 'Data per angkatan: jumlah masuk, lulus tepat masa tempuh, lulus ≤ 2× masa tempuh, masih aktif, dan keluar/DO. Dasar perhitungan PKMTK dan PK2MTK (Indikator 12A).',
-        'langkah' => [
-            'Untuk S1/D4: kohort tepat waktu memakai angkatan TS-3 (lulus sampai akhir TS). Untuk D3: angkatan TS-2.',
-            'Untuk dua kali masa tempuh S1: angkatan TS-7 (atau TS-6 sesuai catatan tabel) yang lulus sampai akhir TS.',
-            'Isi per prodi per tahun masuk, lalu cocokkan dengan PD Dikti.',
-        ],
-        'isian' => [
-            ['Tahun masuk', 'Angkatan.', '2021 (= TS-3 bila TS 2024/2025)'],
-            ['Jumlah masuk', 'Mahasiswa baru angkatan itu.', '300'],
-            ['Lulus tepat masa tempuh', 'Lulus ≤ 4 tahun untuk S1, ≤ 3 tahun untuk D3.', '129 → PKMTK 43%'],
-            ['Lulus ≤ 2× masa tempuh', 'Lulus ≤ 8 tahun untuk S1.', '219 dari 300 → PK2MTK 73%'],
-            ['Mengundurkan diri / DO', 'Keluar sebelum lulus.', '27'],
-        ],
-        'indikator' => [12],
-        'lkpt' => ['Tabel II-1.C.2', 'Tabel II-1.C.3', 'Tabel II-1.C.5', 'Tabel II-1.C.6'],
-        'resmi' => [
-            'Lampiran 3c Ind. 12A Terakreditasi: RPL ≤ 20% (ST ≤ 30%), PKMTK ≥ 0%, PK2MTK ≥ 60%.',
-            'Lampiran 3c Ind. 12A Unggul: RPL < 20%, PKMTK > 35% (ST > 30%), PK2MTK > 60%.',
-        ],
-        'tips' => [
-            'Mahasiswa yang cuti tetap dihitung di kohort angkatannya.',
-        ],
-    ],
-
-    'metric-values' => [
-        'judul' => 'Nilai Metrik',
-        'ringkas' => 'Hasil hitung otomatis metrik kuantitatif IAPT 4.1 per TS dan per prodi (RMDT, PDTT, PDOK, DTJA, RPL, PKMTK, PK2MTK, PPM, PMAP, PLLK, prodi terakreditasi, dan lainnya) beserta masukan rumus dan status verifikasi.',
-        'langkah' => [
-            'Tekan "Hitung" setelah data kinerja lengkap.',
-            'Buka masukan rumus untuk memeriksa angka penyusun (pembilang dan penyebut).',
-            'Verifikasi nilai: pemilik data mencocokkan dengan PD Dikti, lalu menandai terverifikasi.',
-        ],
-        'isian' => [
-            ['RMDT', 'Rasio mahasiswa aktif program utama : dosen tetap.', '1.180 / 31 = 38,1 (≤ 40 memenuhi Terakreditasi).'],
-            ['PDTT', 'Dosen tidak tetap / (DTT + DT) × 100%.', '18 / (18 + 160) = 10,1%.'],
-            ['DTJA', 'Dosen tetap berjabatan akademik / dosen tetap × 100%.', '135 / 160 = 84,4% (universitas ≥ 60%).'],
-            ['PKMTK / PK2MTK', 'Kelulusan tepat masa tempuh / ≤ 2× masa tempuh.', '43% / 73%.'],
-            ['PPM / PMAP / PLLK', 'Penurunan mahasiswa baru; mahasiswa aktif berprestasi juara 1–3 provinsi/nasional/internasional; lulusan terserap ≤ 1 tahun.', 'PPM 3,2%; PMAP 0,6%; PLLK 58%.'],
-        ],
-        'indikator' => [6, 7, 11, 12, 15],
-        'resmi' => [
-            'Ambang Lampiran 3c (Terakreditasi): RM/DT ≤ 40; PDTT ≤ 40%; DTJA ≥ 60% (ST ≥ 30%); RPL ≤ 20%; PKMTK ≥ 0%; PK2MTK ≥ 60%; PPM ≤ 20%; PMAP ≥ 0,01%; PLLK ≥ 20%.',
-        ],
-        'tips' => [
-            'Nilai yang belum diverifikasi sebaiknya tidak dikutip di LED.',
-        ],
-    ],
-
-    'reconciliations' => [
-        'judul' => 'Rekonsiliasi dengan PD Dikti',
-        'ringkas' => 'Membandingkan nilai internal dengan nilai PD Dikti untuk setiap metrik/variabel. Selisih di atas toleransi ditandai, diinvestigasi, diperbaiki di sumbernya, dan diverifikasi. Asesor memakai data PD Dikti.',
-        'langkah' => [
-            'Impor rekap PD Dikti (Impor Data → Rekap PD Dikti).',
-            'Urutkan menurut keparahan. Tetapkan unit dan penanggung jawab untuk selisih tinggi.',
-            'Investigasi penyebab (mis. dosen belum diperbarui homebase-nya, mahasiswa belum dilaporkan lulus), perbaiki di PD Dikti atau data internal, lalu unggah bukti perbaikan.',
-        ],
-        'isian' => [
-            ['Kode data / metrik', 'Metrik (RMDT, DTJA, ...) atau variabel (dosen_tetap, mhs_aktif_utama, ...).', 'dosen_tetap'],
-            ['Cakupan', 'Institusi atau prodi tertentu.', 'S1 Hukum'],
-            ['Nilai internal / PD Dikti', 'Angka dari SIAKAD/SDM dan angka di PD Dikti.', 'Internal 12, PD Dikti 9'],
-            ['Toleransi (%)', 'Selisih yang masih dapat diterima.', '2%'],
-            ['Catatan investigasi', 'Penyebab selisih dan tindakan.', '3 dosen baru belum diangkat sebagai dosen tetap di PD Dikti; usulan NIDN diajukan 4 Oktober.'],
-        ],
-        'indikator' => [26],
-        'resmi' => [
-            'Lampiran 2: Data LKPT diambil dari PD Dikti per TS. Data yang tidak tersedia di PD Dikti diisi dengan URL bukti.',
-            'Lampiran 3c Ind. 26: PT memiliki sistem pengelolaan data dan informasi berbasis TIK, dengan kebijakan formal dan rencana pengembangan TIK untuk manajemen data.',
-        ],
-    ],
-
-    'achievements' => [
-        'judul' => 'Prestasi Mahasiswa',
-        'ringkas' => 'Daftar prestasi akademik dan non-akademik mahasiswa 5 tahun terakhir. Dipakai untuk metrik PMAP (mahasiswa aktif berprestasi juara 1–3 tingkat provinsi, nasional, internasional) pada Indikator 15A.',
-        'langkah' => [
-            'Catat setiap prestasi dengan tingkat, capaian, dan jumlah mahasiswa.',
-            'Unggah sertifikat/piagam ke Pustaka Bukti.',
-        ],
-        'isian' => [
-            ['Nama kegiatan / prestasi', 'Nama lomba dan bidang.', 'Juara 2 Debat Hukum Nasional 2024'],
-            ['Tingkat', 'Lokal, provinsi, nasional, internasional. Yang dihitung PMAP: provinsi ke atas.', 'Nasional'],
-            ['Capaian', 'Juara 1/2/3 atau lainnya.', 'Juara 2'],
-            ['Jumlah mahasiswa', 'Mahasiswa yang terlibat (tim dihitung per orang).', '3'],
-        ],
-        'indikator' => [15],
-        'lkpt' => ['Tabel II-1.D.2 Prestasi Mahasiswa'],
-        'resmi' => [
-            'Lampiran 3c Ind. 15A: PMAP ≥ 0,01% (Terakreditasi), > 0,01% (Unggul).',
-        ],
-    ],
-
-    'publications' => [
-        'judul' => 'Publikasi Dosen',
-        'ringkas' => 'Luaran publikasi dosen tetap dari penelitian dan PkM dalam 3 tahun (TS-2 s.d. TS): jurnal internasional bereputasi, internasional, nasional terakreditasi, nasional, seminar, dan media massa, beserta sitasi.',
-        'langkah' => [
-            'Impor dari SINTA/SISTER atau isi manual.',
-            'Pilih jenis sesuai kategori LKPT agar tabel II-2.C.2 tersusun benar.',
-            'Isi URL/DOI agar asesor dapat memverifikasi.',
-        ],
-        'isian' => [
-            ['Jenis', 'Jurnal internasional bereputasi, jurnal internasional, jurnal nasional terakreditasi, jurnal nasional, seminar internasional, seminar nasional, media massa.', 'Jurnal nasional terakreditasi (Sinta 2)'],
-            ['Sumber', 'Penelitian atau PkM.', 'Penelitian'],
-            ['Sitasi', 'Jumlah sitasi (Google Scholar/Scopus).', '12'],
-        ],
-        'indikator' => [18, 22],
-        'lkpt' => ['Tabel II-2.C.2'],
-    ],
-
-    'research-grants' => [
-        'judul' => 'Dana Penelitian dan PkM',
-        'ringkas' => 'Pendanaan penelitian dan pengabdian kepada masyarakat menurut skema dan sumber dana (internal PT, pemerintah, industri, luar negeri). Mendukung analisis keterlaksanaan Renstra penelitian/PkM.',
-        'langkah' => ['Catat setiap hibah per tahun beserta sumber dan jumlah.', 'Lampirkan kontrak atau SK pendanaan sebagai bukti.'],
-        'isian' => [
-            ['Judul / skema', 'Judul atau nama skema hibah.', 'Penelitian Dasar Kemdiktisaintek 2025'],
-            ['Sumber dana', 'Internal PT, pemerintah, industri, luar negeri.', 'Pemerintah'],
-            ['Jumlah (Rp)', 'Nilai hibah.', '125000000'],
-        ],
-        'indikator' => [16, 17, 20, 21],
-    ],
-
-    'ip-rights' => [
-        'judul' => 'HKI dan Karya yang Diadopsi',
-        'ringkas' => 'Hak kekayaan intelektual dosen (paten, paten sederhana, hak cipta, merek, desain) dan karya yang diadopsi masyarakat/industri. Mendukung Indikator 19 dan 23B serta Tabel 22a/22b.',
-        'langkah' => ['Catat setiap HKI dengan nomor pencatatan.', 'Tandai bila karya diadopsi dan sebutkan pengadopsinya, sertakan bukti pemanfaatan.'],
-        'isian' => [
-            ['Nomor pencatatan / paten', 'Nomor dari DJKI.', 'EC00202412345'],
-            ['Diadopsi masyarakat / industri', 'Centang bila ada bukti pemanfaatan.', 'Ya'],
-            ['Pengadopsi', 'Nama mitra yang memanfaatkan.', 'Koperasi Tani Makmur, Kab. Bandung'],
-        ],
-        'indikator' => [19, 23],
-        'lkpt' => ['Tabel 22a', 'Tabel 22b'],
-    ],
-
-    'recognitions' => [
-        'judul' => 'Rekognisi Dosen',
-        'ringkas' => 'Pengakuan atas kepakaran dosen tetap: narasumber, editor/reviewer jurnal, juri, saksi ahli, penghargaan, keanggotaan asosiasi bereputasi. Dasar Tabel 21 (Indikator 23B).',
-        'langkah' => ['Catat rekognisi TS-2 s.d. TS per dosen dengan tingkatnya.', 'Unggah surat undangan/SK/sertifikat sebagai bukti.'],
-        'isian' => [
-            ['Rekognisi', 'Bentuk pengakuan.', 'Reviewer Jurnal Internasional Q2 (Elsevier)'],
-            ['Tingkat', 'Lokal, provinsi, nasional, internasional.', 'Internasional'],
-        ],
-        'indikator' => [23, 39],
-        'lkpt' => ['Tabel 21'],
-    ],
-
-    'financial-audits' => [
-        'judul' => 'Audit Keuangan',
-        'ringkas' => 'Hasil audit eksternal laporan keuangan oleh Kantor Akuntan Publik (KAP) per tahun beserta opininya. Dasar Tabel 25 (Indikator 35).',
-        'langkah' => ['Isi untuk TS-2 s.d. TS.', 'Tautkan laporan auditor dari Pustaka Bukti (boleh rahasia).'],
-        'isian' => [
-            ['Kantor Akuntan Publik', 'Nama KAP pemeriksa.', 'KAP Santoso & Rekan'],
-            ['Opini', 'WTP, WDP, TW, atau TMP.', 'Wajar Tanpa Pengecualian'],
-            ['Tanggal laporan', 'Tanggal laporan auditor independen.', '28 April 2025'],
-        ],
-        'indikator' => [35],
-        'lkpt' => ['Tabel 25'],
-        'resmi' => [
-            'Lampiran 3c Ind. 35 Terakreditasi (PTS): Badan Penyelenggara menyampaikan laporan keuangan perguruan tinggi kepada pemangku kepentingan internal.',
-            'Lampiran 3c Ind. 35 Unggul: Badan Penyelenggara diaudit KAP dengan opini Wajar Tanpa Pengecualian dan ikhtisar laporan keuangan dipublikasikan secara luas kepada masyarakat.',
-        ],
-    ],
-
-    /* ------------------------------------------------------------------ Survei & Tracer */
-
-    'surveys' => [
-        'judul' => 'Survei Kepuasan Pemangku Kepentingan',
-        'ringkas' => 'Pengukuran kepuasan mahasiswa, dosen, tenaga kependidikan, mitra, lulusan, dan pengguna lulusan terhadap layanan pengelola. Dasar Tabel 24 (Indikator 34). Kuesioner publik dapat dibuka agar jawaban masuk otomatis.',
-        'langkah' => [
-            'Buat satu survei per kelompok per tahun, dengan instrumen yang sahih dan andal.',
-            'Bagikan tautan kuesioner publik atau isi rekap hasil.',
-            'Hitung SB + B (Akredia otomatis) dan tulis tindak lanjut hasil survei, misalnya perbaikan layanan yang dilakukan.',
-        ],
-        'isian' => [
-            ['Kelompok', 'Mahasiswa, Dosen, Tendik, Mitra, Lulusan, Pengguna.', 'Mahasiswa'],
-            ['Populasi / Responden', 'Untuk menghitung keterwakilan responden.', 'Populasi 9.800; responden 1.240 (12,7%).'],
-            ['Jawaban SB/B/C/KB', 'Jumlah jawaban per kategori.', 'SB 420, B 590, C 200, KB 30 → SB+B 81,5%.'],
-            ['Tindak lanjut', 'Perbaikan nyata berdasarkan hasil survei.', 'Menambah layanan konsultasi akademik daring; waktu tanggap helpdesk turun dari 3 hari menjadi 1 hari.'],
-        ],
-        'indikator' => [34],
-        'lkpt' => ['Tabel 24'],
-        'resmi' => [
-            'Lampiran 3c Ind. 34 Terakreditasi: pengukuran kepuasan mencakup 4 aspek, dan minimal 75% pemangku kepentingan menjawab puas.',
-            'Lampiran 3c Ind. 34 Unggul: 1) instrumen sahih, andal, mudah digunakan; 2) dilaksanakan berkala dan datanya terekam komprehensif; 3) dianalisis dengan metode yang tepat dan bermanfaat untuk keputusan; 4) tingkat kepuasan dan tindak lanjutnya.',
-        ],
-    ],
-
-    'employer-satisfactions' => [
-        'judul' => 'Kepuasan Pengguna Lulusan',
-        'ringkas' => 'Hasil survei pengguna lulusan (atasan/pemberi kerja) untuk 7 aspek: etika, keahlian bidang ilmu, bahasa asing, teknologi informasi, komunikasi, kerja sama, dan pengembangan diri. Dasar Tabel II-1.D.2 (Indikator 14B).',
-        'langkah' => [
-            'Survei pengguna lulusan yang lulus pada TS-1 s.d. TS-3.',
-            'Isi persentase atau jumlah jawaban SB/B/C/K untuk setiap aspek.',
-            'Tulis rencana tindak lanjut dan bukti perbaikan kurikulum.',
-        ],
-        'isian' => [
-            ['Aspek', 'Salah satu dari 7 aspek Lampiran 4b.', 'Kemampuan berbahasa asing'],
-            ['SB / B / C / K', 'Jumlah atau persentase jawaban.', 'SB 20%, B 48%, C 27%, K 5%.'],
-            ['Rencana tindak lanjut', 'Perbaikan kurikulum atau layanan.', 'Mewajibkan sertifikat TOEFL ITP ≥ 450 dan menambah mata kuliah English for Specific Purposes.'],
-        ],
-        'indikator' => [14],
-        'lkpt' => ['Tabel II-1.D.2'],
-        'resmi' => [
-            'Lampiran 3c Ind. 14B: survei kepuasan pengguna lulusan TS-1 s.d. TS-3 dengan data valid dan representatif, dievaluasi untuk perbaikan kurikulum; Unggul: terbukti ditindaklanjuti dengan bukti sahih.',
-        ],
-    ],
-
-    'tracer-studys' => [
-        'judul' => 'Tracer Study',
-        'ringkas' => 'Penelusuran lulusan per tahun lulus: responden, bekerja, studi lanjut, berwirausaha, terserap ≤ 1 tahun, waktu tunggu, bekerja di tingkat global, dan bersertifikat kompetensi. Dasar metrik PLLK (Indikator 15A) dan Tabel II-1.D.3.',
-        'langkah' => [
-            'Jalankan tracer study tiap tahun untuk lulusan TS-1 s.d. TS-3 (mengikuti Tracer Study Kemdiktisaintek).',
-            'Isi rekap per tahun lulus.',
-            'Analisis hasil untuk Indikator 15B: akar masalah, faktor pendukung, faktor penghambat, dan tindak lanjut.',
-        ],
-        'isian' => [
-            ['Jumlah lulusan / Responden', 'Lulusan tahun itu dan yang menjawab.', '1.020 lulusan; 612 responden (60%).'],
-            ['Terserap ≤ 1 tahun', 'Bekerja, studi lanjut, atau berwirausaha dalam ≤ 1 tahun.', '355 → PLLK 58%.'],
-            ['Rerata waktu tunggu (bulan)', 'Rerata waktu memperoleh pekerjaan pertama.', '4,2 bulan'],
-        ],
-        'indikator' => [14, 15],
-        'lkpt' => ['Tabel II-1.D.3', 'Tabel II-1.D.4'],
-        'resmi' => ['Lampiran 3c Ind. 15A: PLLK ≥ 20% (Terakreditasi), > 20% (Unggul).'],
-    ],
-
-    /* ------------------------------------------------------------------ Pengendalian */
-
-    'tasks' => [
-        'judul' => 'Tugas',
-        'ringkas' => 'Semua pekerjaan tindak lanjut: dari kertas kerja, temuan AMI, keputusan pimpinan, risiko, dan rekomendasi asesor. Setiap tugas punya penanggung jawab, tenggat, prioritas, dan status.',
-        'langkah' => ['Tulis judul yang berupa hasil akhir, bukan aktivitas.', 'Tetapkan satu penanggung jawab dan tenggat realistis.', 'Kaitkan dengan butir kerja agar kemajuan terlihat di dasbor.'],
-        'isian' => [
-            ['Judul tugas', 'Hasil akhir yang dapat diperiksa.', 'SK Rektor tentang pedoman MBKM ditetapkan (bukan "Rapat MBKM").'],
-            ['Prioritas', 'Tinggi untuk butir syarat perlu atau tenggat dekat.', 'Tinggi'],
-            ['Butir kerja terkait', 'Sub-indikator yang terdampak.', '10B'],
-        ],
-        'indikator' => [],
-    ],
-
-    'papan-tugas' => [
-        'judul' => 'Papan Kanban Tugas',
-        'ringkas' => 'Tampilan kanban tugas per status (belum mulai, berjalan, ditinjau, selesai). Seret kartu untuk memindahkan status.',
-        'langkah' => ['Gunakan pada rapat koordinasi mingguan.', 'Fokus pada kartu yang lama tidak bergerak.'],
-        'isian' => [],
-        'indikator' => [],
-    ],
-
-    'kalender-tenggat' => [
-        'judul' => 'Kalender Tenggat',
-        'ringkas' => 'Semua tenggat dalam satu kalender: butir kerja, tugas, CAPA, tinjau ulang standar, masa berlaku dokumen, akreditasi prodi yang akan berakhir, dan jadwal asesmen lapangan.',
-        'langkah' => ['Periksa tenggat 30 hari ke depan setiap awal minggu.', 'Akreditasi prodi yang akan kedaluwarsa memengaruhi syarat perlu Indikator 4; ajukan reakreditasi jauh hari.'],
-        'isian' => [],
-        'indikator' => [4],
-    ],
-
-    'decisions' => [
-        'judul' => 'Keputusan Pimpinan',
-        'ringkas' => 'Catatan keputusan pimpinan terkait akreditasi beserta tugas turunannya. Membuktikan peran pimpinan dalam siklus PPEPP (pengendalian dan peningkatan) dan tata pamong.',
-        'langkah' => ['Catat keputusan segera setelah rapat.', 'Turunkan menjadi tugas dengan penanggung jawab.', 'Tutup keputusan bila seluruh tugas selesai.'],
-        'isian' => [
-            ['Keputusan', 'Rumusan singkat.', 'Rekrutmen 9 dosen tetap untuk 3 prodi dengan RM/DT > 40.'],
-            ['Forum', 'Rapat tempat keputusan diambil.', 'Rapat Pimpinan 14 Oktober 2025'],
-        ],
-        'indikator' => [2, 25],
-    ],
-
-    'risks' => [
-        'judul' => 'Risiko',
-        'ringkas' => 'Register risiko akreditasi: peristiwa yang dapat menggagalkan indikator, dengan probabilitas, dampak, skor, pemilik, dan mitigasi. SPMI IAPT 4.1 menuntut pendekatan berbasis risiko.',
-        'langkah' => ['Identifikasi risiko per indikator, terutama syarat perlu.', 'Nilai probabilitas dan dampak 1–5; skor = P × D.', 'Tetapkan mitigasi dan target tanggal.'],
-        'isian' => [
-            ['Risiko', 'Peristiwa yang mungkin terjadi.', 'Akreditasi prodi D3 Perhotelan berakhir Mei 2026 sebelum hasil reakreditasi terbit.'],
-            ['Probabilitas / Dampak', 'Skala 1–5.', 'P 3, D 5 → skor 15 (tinggi).'],
-            ['Mitigasi', 'Langkah mengurangi risiko.', 'Unggah dokumen reakreditasi ke LAM paling lambat Desember 2025.'],
-        ],
-        'indikator' => [25, 4],
-        'resmi' => ['Lampiran 3c Ind. 25: PT memiliki sistem tata pamong untuk menjamin akuntabilitas, keberlanjutan, dan transparansi, serta mitigasi potensi risiko akademik maupun non-akademik.'],
-    ],
-
-    /* ------------------------------------------------------------------ SPMI */
-
-    'quality-standards' => [
-        'judul' => 'Standar Mutu',
-        'ringkas' => 'Daftar standar SPMI (akademik dan non-akademik) beserta tahap PPEPP saat ini dan jadwal tinjau ulang. Membuktikan Indikator 1 (perangkat SPMI) dan Indikator 2 (implementasi siklus PPEPP).',
-        'langkah' => ['Catat semua standar yang ditetapkan, minimal standar SN Dikti dan standar tambahan PT.', 'Perbarui tahap PPEPP setiap siklus.', 'Tinjau ulang standar sesuai jadwal; hasil tinjauan menjadi bukti peningkatan.'],
-        'isian' => [
-            ['Kode / Nama standar', 'Identitas standar.', 'STD-AK-03 Standar Proses Pembelajaran'],
-            ['Bidang', 'Akademik atau non-akademik.', 'Akademik'],
-            ['Tahap PPEPP', 'Penetapan, Pelaksanaan, Evaluasi, Pengendalian, Peningkatan.', 'Evaluasi (AMI 2025 selesai)'],
-            ['Pernyataan standar', 'Rumusan standar yang terukur (ABCD: audience, behavior, competence, degree).', 'Dosen pengampu mengunggah RPS seluruh mata kuliah paling lambat 2 minggu sebelum perkuliahan (100%).'],
-        ],
-        'indikator' => [1, 2, 3],
-    ],
-
-    'internal-audits' => [
-        'judul' => 'Audit Mutu Internal (AMI)',
-        'ringkas' => 'Jadwal dan hasil AMI per unit per siklus. AMI adalah tahap Evaluasi dalam PPEPP dan bukti utama Indikator 2.',
-        'langkah' => ['Rencanakan AMI tahunan untuk semua unit.', 'Catat hasil dan temuan di menu Temuan.', 'Pastikan temuan ditindaklanjuti dengan CAPA dan dibahas di RTM.'],
-        'isian' => [
-            ['Nama audit', 'Nama siklus dan unit.', 'AMI 2025 Fakultas Ekonomi dan Bisnis'],
-            ['Ketua auditor', 'Auditor bersertifikat.', 'Dr. Andi Pratama, M.M.'],
-            ['Ringkasan hasil', 'Ringkasan kesimpulan audit.', '2 mayor, 5 minor, 3 observasi; kesesuaian 86%.'],
-        ],
-        'indikator' => [2, 3],
-    ],
-
-    'findings' => [
-        'judul' => 'Temuan',
-        'ringkas' => 'Temuan AMI atau sumber lain (asesor, survei) dengan kategori mayor/minor/observasi/peluang, akar masalah, dan tenggat. Setiap temuan ditindaklanjuti dengan CAPA.',
-        'langkah' => ['Uraikan temuan berdasarkan fakta dan standar yang dilanggar.', 'Analisis akar masalah (mis. 5 Why).', 'Buat CAPA dan pantau sampai efektif.'],
-        'isian' => [
-            ['Kategori', 'Mayor: ketidaksesuaian yang berdampak sistemik; Minor: ketidaksesuaian terbatas; Observasi: potensi masalah; Peluang: saran peningkatan.', 'Minor'],
-            ['Uraian temuan', 'Fakta + kriteria.', '4 dari 32 RPS prodi Manajemen belum memuat CPMK (Standar STD-AK-03).'],
-            ['Akar masalah', 'Penyebab mendasar.', 'Templat RPS lama belum diperbarui setelah revisi kurikulum OBE.'],
-            ['Indikator IAPT terkait', 'Indikator yang terdampak.', '5 (kurikulum OBE)'],
-        ],
-        'indikator' => [2, 5],
-    ],
-
-    'capas' => [
-        'judul' => 'CAPA (Tindakan Koreksi dan Pencegahan)',
-        'ringkas' => 'Tindakan koreksi/pencegahan atas temuan, dengan penanggung jawab, tenggat, dan verifikasi efektivitas. Bukti tahap Pengendalian dan Peningkatan pada siklus PPEPP.',
-        'langkah' => ['Pilih temuan dan jenis tindakan (koreksi/korektif/pencegahan).', 'Laksanakan dan catat tanggal selesai.', 'Verifikator memeriksa efektivitas: apakah masalah tidak terulang.'],
-        'isian' => [
-            ['Tindakan', 'Tindakan yang menghilangkan akar masalah.', 'Memperbarui templat RPS dan melatih 32 dosen; RPS direviu GKM.'],
-            ['Efektif?', 'Diisi verifikator setelah tindakan berjalan.', 'Ya, AMI berikutnya 0 RPS tanpa CPMK.'],
-        ],
-        'indikator' => [2],
-    ],
-
-    'management-reviews' => [
-        'judul' => 'Rapat Tinjauan Manajemen (RTM)',
-        'ringkas' => 'Notulen dan keputusan RTM yang membahas hasil AMI, survei, kinerja, dan tindak lanjut. RTM adalah bukti pengendalian oleh pimpinan dan laporan implementasi SPMI (Indikator 2 dan 3).',
-        'langkah' => ['Selenggarakan RTM minimal setahun sekali setelah AMI.', 'Catat masukan, keputusan, dan tindak lanjut.', 'Turunkan keputusan menjadi tugas.'],
-        'isian' => [
-            ['Judul rapat', 'Nama RTM.', 'RTM Tingkat Universitas 2025'],
-            ['Keputusan dan tindak lanjut', 'Butir keputusan yang terukur.', '1) Revisi standar penelitian (target 2026); 2) Anggaran pelatihan auditor Rp150 juta.'],
-        ],
-        'indikator' => [2, 3],
-    ],
-
-    /* ------------------------------------------------------------------ Asesmen Lapangan */
-
-    'site-visits' => [
-        'judul' => 'Asesmen Lapangan',
-        'ringkas' => 'Rencana dan catatan asesmen lapangan (AL) daring atau luring: jadwal, gladi, tim asesor, ruang dokumen, sesi, narasumber, dan berita acara.',
-        'langkah' => ['Buat agenda setelah ada surat pemberitahuan AL dari BAN-PT.', 'Susun sesi dan narasumber per kelompok.', 'Lakukan gladi minimal satu minggu sebelumnya.', 'Catat rekomendasi asesor untuk ditindaklanjuti.'],
-        'isian' => [
-            ['Moda', 'Daring atau luring, sesuai keputusan BAN-PT.', 'Daring (Zoom)'],
-            ['Ruang dokumen / tautan', 'Tempat asesor membuka bukti.', 'https://akreditasi.univ.ac.id/ruang-dokumen'],
-        ],
-        'indikator' => [],
-        'resmi' => ['Lampiran 2: Asesmen Lapangan dilakukan bila diputuskan Dewan Eksekutif, secara daring atau luring, untuk memverifikasi dan mengklarifikasi hasil Asesmen Kecukupan.'],
-    ],
-
-    'visit-sessions' => [
-        'judul' => 'Sesi Asesmen Lapangan',
-        'ringkas' => 'Jadwal sesi AL per kelompok narasumber (pimpinan, dosen, tendik, mahasiswa, lulusan, pengguna, observasi).',
-        'langkah' => ['Isi waktu, topik, ruang/tautan, dan koordinator setiap sesi.'],
-        'isian' => [['Topik / acara', 'Isi sesi.', 'Wawancara pimpinan: tata pamong dan diferensiasi misi (Ind. 24–25, 36).']],
-        'indikator' => [],
-    ],
-
-    'visit-interviewees' => [
-        'judul' => 'Narasumber Asesmen Lapangan',
-        'ringkas' => 'Daftar narasumber per kelompok beserta konfirmasi kehadiran.',
-        'langkah' => ['Pilih narasumber yang memahami praktik nyata, bukan hanya pejabat.', 'Konfirmasi kehadiran H-3.'],
-        'isian' => [['Kelompok', 'Pimpinan, dosen, tendik, mahasiswa, lulusan, pengguna.', 'Pengguna: HRD PT Bank ABC']],
-        'indikator' => [],
-    ],
-
-    'visit-questions' => [
-        'judul' => 'Bank Pertanyaan Asesor',
-        'ringkas' => 'Prediksi pertanyaan asesor per indikator, pokok jawaban, bukti yang ditunjukkan, dan penjawab utama. Dipakai untuk gladi.',
-        'langkah' => ['Turunkan pertanyaan dari deskripsi pemenuhan resmi (lihat rujukan resmi).', 'Tulis pokok jawaban singkat dengan bukti yang dapat ditunjukkan.', 'Tandai setelah digladikan.'],
-        'isian' => [
-            ['Pertanyaan', 'Pertanyaan yang mungkin muncul.', 'Bagaimana hasil AMI 2024 ditindaklanjuti dan apa buktinya?'],
-            ['Pokok jawaban dan bukti', 'Inti jawaban + dokumen.', 'Temuan 7 minor → 7 CAPA selesai; notulen RTM 12 Feb 2025; laporan AMI 2025.'],
-        ],
-        'indikator' => [2],
-    ],
-
-    'visit-recommendations' => [
-        'judul' => 'Rekomendasi Asesor',
-        'ringkas' => 'Rekomendasi asesor setelah AL per indikator beserta tindak lanjutnya. Bahan perbaikan berkelanjutan dan bukti SPMI siklus berikutnya.',
-        'langkah' => ['Catat rekomendasi apa adanya.', 'Turunkan menjadi tugas atau CAPA.'],
-        'isian' => [['Rekomendasi', 'Teks rekomendasi.', 'Perkuat analisis capaian dampak Indikator 15 dengan akar masalah per prodi.']],
-        'indikator' => [],
-    ],
-
-    /* ------------------------------------------------------------------ Institusi */
-
-    'profil-institusi' => [
-        'judul' => 'Profil Institusi',
-        'ringkas' => 'Identitas perguruan tinggi untuk halaman identitas LKPT dan Bab I LED: nama, kode PT, jenis PT (menentukan varian instrumen), badan penyelenggara, SK pendirian, akreditasi terakhir, visi, dan fokus diferensiasi misi.',
-        'langkah' => ['Lengkapi seluruh identitas sesuai SK pendirian.', 'Tulis fokus diferensiasi misi: pendidikan, penelitian, atau PkM. Pilihan ini dipakai di banyak deskriptor Unggul dan Kriteria 4.'],
-        'isian' => [
-            ['Jenis PT', 'Menentukan varian Lampiran 3.', 'PTS Akademik → Lampiran 3c'],
-            ['Tahun pertama menerima mahasiswa', 'Menentukan perlakuan "PT baru < 2 tahun" pada beberapa indikator.', '1998'],
-            ['Fokus diferensiasi misi', 'Bidang keunggulan yang dijanjikan.', 'Pendidikan vokasional berbasis industri kreatif.'],
-        ],
-        'indikator' => [36, 37, 38, 39],
-        'lkpt' => ['Identitas Perguruan Tinggi'],
-    ],
-
-    'study-programs' => [
-        'judul' => 'Program Studi',
-        'ringkas' => 'Daftar prodi beserta jenjang, kode PD Dikti, fakultas, tahun dibuka, akreditasi berlaku, dan jumlah dosen tetap. Dasar Indikator 4 dan pengelompokan data per prodi.',
-        'langkah' => ['Gunakan kode PD Dikti resmi.', 'Prodi baru yang beroperasi > 2 tahun dan belum terakreditasi dihitung tidak terakreditasi.'],
-        'isian' => [
-            ['Kode PD Dikti', 'Kode program studi.', '61201'],
-            ['Jenjang', 'D3, D4, S1, S2, S3, profesi, spesialis.', 'S1'],
-            ['Tahun dibuka', 'Tahun izin operasional.', '2019'],
-        ],
-        'indikator' => [4, 7],
-        'lkpt' => ['Tabel 1'],
-    ],
-
-    'program-accreditations' => [
-        'judul' => 'Akreditasi Program Studi',
-        'ringkas' => 'Riwayat dan status akreditasi setiap prodi dari BAN-PT atau LAM, termasuk akreditasi internasional. Dasar Tabel 1 dan syarat perlu Indikator 4.',
-        'langkah' => ['Masukkan SK akreditasi terbaru setiap prodi dan centang "berlaku saat ini".', 'Pantau masa berlaku; prodi kedaluwarsa menggagalkan syarat perlu Terakreditasi.'],
-        'isian' => [
-            ['Lembaga', 'BAN-PT atau LAM (LAMEMBA, LAMDIK, LAM Teknik, LAM-PTKes, dan lain-lain).', 'LAMEMBA'],
-            ['Status / peringkat', 'Unggul, Baik Sekali, Baik, A, B, C, Terakreditasi, Minimum, Internasional, Tidak.', 'Baik Sekali'],
-            ['Nomor SK / Berlaku sampai', 'Sesuai sertifikat.', '1234/DE/A.5/AR.10/X/2023, berlaku sampai 10 Oktober 2028'],
-        ],
-        'indikator' => [4],
-        'lkpt' => ['Tabel 1', 'Tabel 3 (akreditasi internasional)'],
-        'resmi' => [
-            'Lampiran 3c Ind. 4 Terakreditasi: persentase PS terakreditasi 100% (syarat perlu).',
-            'Lampiran 3c Ind. 4 Unggul: PT dengan ≥ 40 prodi atau ≤ 10 prodi: PS Unggul dan/atau A minimal 20%; PT dengan 10–40 prodi: minimal 15% (syarat perlu Unggul).',
-            'Lampiran 4b: Prodi terakreditasi/bersertifikat internasional dihitung jika telah divalidasi kementerian.',
-        ],
-    ],
-
-    'units' => [
-        'judul' => 'Unit Kerja',
-        'ringkas' => 'Struktur organisasi: fakultas, lembaga, biro, UPT, beserta kepala unit. Dipakai untuk pembagian tugas, akses bukti rahasia, dan sasaran AMI. Relevan dengan Indikator 24 (statuta dan struktur organisasi).',
-        'langkah' => ['Masukkan sesuai statuta/OTK terbaru.', 'Tetapkan unit induk untuk hierarki.'],
-        'isian' => [['Jenis', 'Fakultas, lembaga, biro, UPT, prodi, lainnya.', 'Lembaga (LPM)']],
-        'indikator' => [24],
-    ],
-
-    'academic-periods' => [
-        'judul' => 'Periode Akademik',
-        'ringkas' => 'Tahun akademik yang dipakai untuk TS dan TS-n. Proyek akreditasi memilih salah satu periode sebagai TS.',
-        'langkah' => ['Buat periode untuk minimal 7 tahun terakhir (TS-6 s.d. TS) agar tabel kohort lengkap.'],
-        'isian' => [
-            ['Nama periode', 'Format tahun akademik.', '2024/2025'],
-            ['Tahun awal (TS)', 'Tahun awal periode.', '2024'],
-        ],
-        'indikator' => [],
-        'resmi' => ['Lampiran 4b: TS = tahun akademik penuh terakhir; TS-n = tahun akademik n tahun sebelum TS.'],
-    ],
-
-    /* ------------------------------------------------------------------ Administrasi */
-
-    'memberships' => [
-        'judul' => 'Pengguna dan Peran',
-        'ringkas' => 'Kelola anggota tim dan perannya: Admin, Pimpinan, Manajer akreditasi, PIC, Pemilik Data, Reviewer, Asesor (internal), dan Pengamat (hanya baca).',
-        'langkah' => ['Undang pengguna dengan email institusi.', 'Pilih peran sesuai tanggung jawab; PIC dan Pemilik Data wajib punya unit.', 'Nonaktifkan akun yang tidak lagi terlibat.'],
-        'isian' => [
-            ['Peran', 'Pimpinan: memantau dan mengesahkan; Manajer: mengatur proyek dan penugasan; PIC: menulis butir; Pemilik Data: mengisi data kinerja; Reviewer: mereviu; Pengamat: hanya membaca.', 'Kepala Biro Akademik → Pemilik Data, unit Biro Akademik.'],
-            ['Unit', 'Membatasi akses bukti rahasia ke unit pengguna.', 'Biro SDM'],
-        ],
-        'indikator' => [],
-    ],
-
-    'audit-logs' => [
+    'app.log-audit' => [
         'judul' => 'Log Audit',
-        'ringkas' => 'Jejak semua perubahan data, login, ekspor, dan unduhan bukti rahasia. Mendukung akuntabilitas dan keamanan data (Indikator 26).',
-        'langkah' => ['Saring menurut pengguna atau rentang tanggal untuk menelusuri perubahan.'],
-        'isian' => [],
-        'indikator' => [26],
+        'ringkas' => 'Jejak semua tindakan penting: siapa menyetujui PQ, mencabut sertifikat, menyetujui izin, atau memblokir kartu, dan kapan. Tidak dapat diubah.',
+        'fase' => 'Pengaturan',
+        'langkah' => [
+            'Saring menurut jenis peristiwa atau pengguna.',
+            'Gunakan saat audit SMK3 atau investigasi insiden untuk membuktikan siapa memutuskan apa.',
+        ],
+        'gambar' => 'Log audit dengan peristiwa, pengguna, dan waktu.',
     ],
 
-    /* ------------------------------------------------------------------ Panduan */
+    /* =========================================================== PORTAL KONTRAKTOR */
 
-    'panduan.memahami-iapt' => [
-        'judul' => 'Memahami IAPT 4.1',
-        'ringkas' => 'Penjelasan struktur IAPT 4.1: 4 kriteria, 39 indikator, sasaran mutu, syarat perlu, dan cara penilaian. Gunakan pemilih indikator di bawah untuk membaca teks resmi setiap indikator.',
-        'langkah' => ['Pahami alur: Masukan → Proses → Luaran/Capaian → Dampak pada setiap kriteria.', 'Baca indikator yang bertanda syarat perlu lebih dulu (mis. 1, 4, 7A, dan 11 untuk PTS Akademik).'],
-        'isian' => [],
-        'indikator' => [1, 2, 3, 4],
-        'resmi' => [
-            'Lampiran 2: Kriteria IAPT 4.1: (1) Budaya Mutu, (2) Relevansi Pendidikan, Penelitian, dan PkM, (3) Akuntabilitas, (4) Diferensiasi Misi.',
-            'Lampiran 2: Syarat eligibilitas: 1) izin penyelenggaraan yang sah dan berlaku; 2) anggaran dasar/rumah tangga atau statuta; 3) rencana induk pengembangan atau renstra yang memuat diferensiasi visi-misi, nilai dasar, pengambilan keputusan, dan SPMI; 4) seluruh prodi aktif berstatus terakreditasi (termasuk terakreditasi pertama/sementara).',
+    'kontraktor.dasbor-kontraktor' => [
+        'judul' => 'Dasbor Saya (Kontraktor)',
+        'ringkas' => 'Ringkasan untuk perusahaan kontraktor: kontrak aktif di setiap owner, kesiapan pekerja, izin kerja minggu ini, statistik keselamatan, dan dokumen yang akan kedaluwarsa.',
+        'konsep' => [
+            ['Kesiapan pekerja', 'Siap = kartu akses aktif; Tertahan = ada syarat kurang (surat sehat habis, belum induksi); Cadangan = aktif di perusahaan tetapi belum ditugaskan ke kontrak.'],
+            ['Daftar tugas', 'Hal yang harus dikerjakan kontraktor: PQ yang perlu dijawab, klarifikasi dari owner, undangan seleksi, dokumen yang akan kedaluwarsa.'],
+            ['Satu akun banyak owner', 'Bila perusahaan Anda bekerja untuk beberapa owner yang memakai Rekana, semua kontrak tampil di sini; dokumen dan pekerja cukup diisi sekali.'],
+        ],
+        'langkah' => [
+            'Kerjakan dulu daftar tugas di panel kanan.',
+            'Periksa tabel kesiapan pekerja; pekerja tertahan tidak dapat dimasukkan ke izin kerja.',
+            'Pantau kemajuan kontrak dan izin kerja per jenis untuk merencanakan personel.',
+        ],
+        'gambar' => 'Dasbor kontraktor demo: kontrak, kesiapan pekerja, dan tren izin kerja.',
+        'tips' => [
+            'Portal kontraktor gratis. Biaya langganan Rekana ditanggung owner.',
         ],
     ],
 
-    'panduan' => [
-        'judul' => 'Panduan',
-        'ringkas' => 'Halaman panduan berisi penjelasan konsep akreditasi dan cara memakai Akredia. Tombol Bantuan di setiap halaman kerja memberi penjelasan isian, contoh, dan rujukan resmi BAN-PT yang relevan dengan halaman tersebut.',
-        'langkah' => ['Mulai dari "Memahami IAPT 4.1" lalu "Peta Jalan Akreditasi".', 'Gunakan pemilih indikator di bawah untuk membaca teks resmi indikator mana pun.'],
-        'isian' => [],
-        'indikator' => [],
+    'kontraktor.dokumen' => [
+        'judul' => 'Dokumen Perusahaan',
+        'ringkas' => 'Pustaka dokumen perusahaan kontraktor: legalitas, sertifikat sistem K3, prosedur, BPJS, asuransi. Dokumen dapat dilampirkan ke jawaban PQ untuk semua owner.',
+        'konsep' => [
+            ['Masa berlaku', 'Isi tanggal berlaku agar Rekana mengingatkan Anda dan owner sebelum dokumen kedaluwarsa.'],
+        ],
+        'langkah' => [
+            'Klik "Buat Dokumen", pilih jenis dokumen.',
+            'Isi nama, nomor, tanggal terbit, dan tanggal berlaku.',
+            'Unggah berkas PDF atau JPG (maksimal '.round(config('rekana.upload_max_kb') / 1024).' MB).',
+            'Simpan. Dokumen siap dipilih sebagai bukti di jawaban PQ.',
+        ],
+        'isian' => [
+            ['Jenis dokumen', 'Kategori dokumen.', 'Sertifikat SMK3'],
+            ['Nomor', 'Nomor resmi dokumen.', 'SMK3/1234/2025'],
+            ['Berlaku sampai', 'Tanggal kedaluwarsa; kosongkan bila tidak berbatas.', '30-06-2028'],
+        ],
+        'gambar' => 'Pustaka dokumen kontraktor dengan masa berlaku.',
+        'tips' => [
+            'Unggah versi bertanda tangan dan berstempel. Dokumen draf biasanya dinilai 1 oleh evaluator.',
+        ],
     ],
 
-    'profile' => [
-        'judul' => 'Profil Saya',
-        'ringkas' => 'Ubah nama, email, kata sandi, dan aktifkan verifikasi dua langkah (MFA). Pengguna dengan akses bukti rahasia sangat disarankan mengaktifkan MFA.',
-        'langkah' => ['Gunakan kata sandi minimal 12 karakter.', 'Aktifkan MFA dengan aplikasi autentikator.'],
-        'isian' => [],
-        'indikator' => [],
+    'kontraktor.statistik-k3' => [
+        'judul' => 'Statistik K3 Tahunan',
+        'ringkas' => 'Data keselamatan tahunan perusahaan: jam kerja, kecelakaan fatal, kasus hilang waktu, kasus tercatat, dan hari hilang. Owner memakai data ini untuk menghitung LTIFR dan TRIR.',
+        'konsep' => [
+            ['Jam kerja', 'Total jam kerja seluruh pekerja (termasuk subkontraktor) dalam setahun. Perkiraan: jumlah pekerja × jam per hari × hari kerja.'],
+            ['LTI', 'Kecelakaan yang membuat pekerja tidak dapat bekerja minimal satu shift berikutnya.'],
+            ['TRI', 'Semua kasus tercatat: LTI + perawatan medis + kerja terbatas + fatal.'],
+        ],
+        'langkah' => [
+            'Klik "Buat Statistik K3", isi tahun.',
+            'Isi total jam kerja dan jumlah kasus per jenis.',
+            'Isi untuk tiga tahun terakhir.',
+        ],
+        'isian' => [
+            ['Total jam kerja', 'Jam kerja setahun.', '120 pekerja × 8 jam × 300 hari = 288.000'],
+            ['Kasus hilang waktu (LTI)', 'Jumlah kasus.', '1'],
+            ['Kasus tercatat (TRI)', 'Termasuk LTI.', '3'],
+        ],
+        'gambar' => 'Statistik K3 tahunan yang dilaporkan kontraktor.',
+        'tips' => [
+            'Melaporkan nol kasus dengan jam kerja besar tanpa bukti justru menimbulkan pertanyaan. Laporkan apa adanya; owner menilai tren dan tindakan perbaikan.',
+        ],
     ],
+
+    'kontraktor.pekerja' => [
+        'judul' => 'Pekerja',
+        'ringkas' => 'Data pekerja perusahaan beserta kompetensi, SIO, dan surat sehat. Owner memakai data ini untuk induksi, kartu akses, dan izin kerja.',
+        'konsep' => [
+            ['Surat sehat', 'Tanggal berlaku surat keterangan sehat (MCU). Bila habis, kartu akses ikut habis.'],
+            ['Kompetensi', 'Sertifikat keahlian seperti SIO operator crane, juru las, K3 listrik, atau petugas ruang terbatas.'],
+        ],
+        'langkah' => [
+            'Klik "Buat Pekerja", isi nama lengkap, NIK, jabatan, dan telepon.',
+            'Isi tanggal berlaku surat sehat.',
+            'Tambahkan kompetensi satu per satu dengan nomor, penerbit, dan masa berlaku.',
+            'Nonaktifkan pekerja yang keluar.',
+        ],
+        'isian' => [
+            ['NIK', 'Nomor induk kependudukan 16 digit.', '3525010101900001'],
+            ['Surat sehat berlaku s.d.', 'Dari MCU terakhir.', '31-12-2026'],
+            ['Nama kompetensi', 'Jenis sertifikat.', 'Juru las 3G SMAW'],
+        ],
+        'gambar' => 'Daftar pekerja dengan status kartu dan surat sehat.',
+    ],
+
+    'kontraktor.prakualifikasi' => [
+        'judul' => 'Prakualifikasi (PQ)',
+        'ringkas' => 'Kuesioner prakualifikasi dari owner. Jawab setiap butir dan lampirkan bukti, lalu ajukan. Hasilnya sertifikat CSMS yang menentukan pekerjaan apa yang dapat Anda ikuti.',
+        'konsep' => [
+            ['Status', 'Draf (Anda mengisi), Diajukan (owner menilai), Klarifikasi (owner meminta tambahan), Disetujui (sertifikat terbit), Ditolak.'],
+        ],
+        'langkah' => [
+            'Klik PQ berstatus Draf atau Klarifikasi untuk mulai menjawab.',
+        ],
+        'gambar' => 'Daftar PQ kontraktor per owner.',
+    ],
+
+    'kontraktor.prakualifikasi.edit' => [
+        'judul' => 'Menjawab Prakualifikasi',
+        'ringkas' => 'Halaman menjawab kuesioner PQ. Setiap butir perlu jawaban singkat, skor mandiri, dan bukti.',
+        'konsep' => [
+            ['Skor mandiri 0–4', '0 tidak ada; 1 ada tetapi belum memadai; 2 memadai sebagian; 3 memadai dan diterapkan; 4 diterapkan dan dievaluasi berkala.'],
+            ['Butir kritis', 'Ditandai khusus. Bila dinilai 0 oleh owner, PQ gagal. Pastikan butir ini berbukti kuat.'],
+        ],
+        'langkah' => [
+            'Untuk setiap butir, tulis jawaban singkat yang menjelaskan apa yang Anda lakukan.',
+            'Pilih skor mandiri secara jujur.',
+            'Pilih dokumen pendukung dari pustaka Dokumen, atau unggah bukti baru.',
+            'Simpan berkala. Setelah semua butir terisi, klik "Ajukan ke owner".',
+            'Bila status kembali Klarifikasi, baca pesan owner di bagian atas, lengkapi, lalu ajukan ulang.',
+        ],
+        'isian' => [
+            ['Jawaban', 'Penjelasan singkat dan spesifik.', 'Prosedur LOTO PRO-K3-07 rev. 3; pelatihan ulang tiap tahun, terakhir Feb 2026'],
+            ['Dokumen pendukung', 'Pilih dari pustaka dokumen.', 'Prosedur kerja aman: PRO-K3-07'],
+        ],
+        'gambar' => 'Formulir jawaban PQ dengan skor mandiri dan bukti.',
+        'tips' => [
+            'Jawaban "sudah ada" tanpa bukti hampir selalu dinilai 0 atau 1.',
+        ],
+    ],
+
+    'kontraktor.undangan-seleksi' => [
+        'judul' => 'Undangan Seleksi',
+        'ringkas' => 'Undangan seleksi dari owner. Unggah HSE Plan khusus proyek sebelum batas waktu.',
+        'konsep' => [
+            ['HSE Plan', 'Rencana K3 khusus pekerjaan: organisasi K3 proyek, JSA/HIRADC per aktivitas, personel kunci dan sertifikatnya, peralatan dan inspeksinya, tanggap darurat, dan pengendalian khusus lokasi (misalnya keamanan pangan).'],
+        ],
+        'langkah' => [
+            'Buka undangan, baca lingkup dan batas waktu.',
+            'Klik "Unggah HSE Plan", lampirkan PDF, dan tulis ringkasan.',
+            'Tunggu penilaian owner; hasilnya tampil di baris undangan.',
+        ],
+        'gambar' => 'Daftar undangan seleksi dengan batas waktu.',
+        'tips' => [
+            'HSE Plan generik yang tidak menyebut aktivitas proyek akan bernilai rendah di kriteria risiko.',
+        ],
+    ],
+
+    'kontraktor.kontrak' => [
+        'judul' => 'Kontrak',
+        'ringkas' => 'Kontrak Anda dengan setiap owner, status mobilisasi, dan masa berlakunya. Halaman ini hanya baca; perubahan dilakukan owner.',
+        'langkah' => [
+            'Periksa status mobilisasi: kick-off, induksi, kartu akses, izin mulai kerja.',
+            'Bila masih tertahan, hubungi pengawas owner untuk syarat yang kurang.',
+        ],
+        'gambar' => 'Daftar kontrak kontraktor dengan status.',
+    ],
+
+    'kontraktor.izin-kerja' => [
+        'judul' => 'Izin Kerja',
+        'ringkas' => 'Semua izin kerja untuk kontrak Anda di setiap owner. Supervisor kontraktor dapat memantau izin yang aktif, disetujui, dan ditutup.',
+        'langkah' => [
+            'Saring menurut status untuk melihat izin aktif hari ini.',
+            'Pastikan setiap izin aktif ditutup bersama pengawas owner setelah pekerjaan selesai.',
+        ],
+        'gambar' => 'Daftar izin kerja kontraktor.',
+    ],
+
+    /* ===================================================================== UMUM */
 
     '_umum' => [
-        'judul' => 'Bantuan',
-        'ringkas' => 'Akredia membantu tim menyiapkan akreditasi institusi IAPT 4.1: membagi sub-indikator kepada PIC, mengumpulkan bukti, menghitung data kinerja dari PD Dikti, menulis LED, dan memantau kesiapan.',
+        'judul' => 'Bantuan Rekana',
+        'ringkas' => 'Rekana adalah sistem manajemen keselamatan kontraktor (CSMS) mengikuti enam fase IOGP 423: penilaian risiko, prakualifikasi, seleksi, mobilisasi, pelaksanaan, dan evaluasi akhir.',
         'langkah' => [
-            'Manajer membuat proyek akreditasi dan menetapkan PIC per butir kerja.',
-            'Pemilik data mengisi atau mengimpor Data Kinerja dan merekonsiliasinya dengan PD Dikti.',
-            'PIC mengisi analisis kesenjangan, mengunggah bukti, dan menulis LED.',
-            'Reviewer mereviu, pimpinan memantau dasbor dan mengesahkan.',
+            'Buka menu di sisi kiri sesuai fase pekerjaan.',
+            'Klik tombol Bantuan di bagian atas pada halaman mana pun untuk penjelasan halaman tersebut.',
         ],
-        'isian' => [],
-        'indikator' => [],
     ],
 ];

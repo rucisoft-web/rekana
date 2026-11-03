@@ -51,7 +51,7 @@ class ScorePrequalification extends EditRecord
             Section::make('Cara menilai')->collapsible()->schema([
                 Placeholder::make('help')->hiddenLabel()->content(new HtmlString(
                     'Skor PQ = Σ(bobot × skor) ÷ Σ(bobot × 4) × 100. Butir <b>kritis</b> yang diberi skor 0 membuat PQ gagal apa pun total skornya. '
-                    .'Ambang lulus: Rendah '.implode(' · ', array_map(fn ($k, $v) => ucfirst($k).' '.$v.'%', array_keys(filament()->getTenant()->pqThresholds()), filament()->getTenant()->pqThresholds())).'. '
+                    .'Ambang lulus: '.implode(' · ', array_map(fn ($k, $v) => ucfirst($k).' '.$v.'%', array_keys(filament()->getTenant()->pqThresholds()), filament()->getTenant()->pqThresholds())).'. '
                     .'Penilai tidak boleh menyetujui penilaiannya sendiri (prinsip empat mata).'
                 )),
             ]),

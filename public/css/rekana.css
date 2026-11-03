@@ -105,3 +105,72 @@
 .rk-table td { min-width: 90px; }
 .fi-sidebar .fi-tenant-menu-trigger *, .fi-sidebar .fi-sidebar-nav-groups button { color: #e7e5e4 !important; }
 .fi-sidebar .fi-tenant-menu-trigger:hover { background: rgba(251, 191, 36, .1) !important; }
+
+/* Bantuan per halaman: tombol bilah atas, laci samping, dan halaman Panduan. */
+[x-cloak] { display: none !important; }
+.rk-help-btn { display: inline-flex; align-items: center; gap: .4rem; padding: .42rem .8rem; margin-inline-end: .5rem; border-radius: 999px; font-size: .82rem; font-weight: 700;
+    color: #1c1917; background: #fbbf24; border: 1px solid #f59e0b; box-shadow: 0 1px 0 rgba(0, 0, 0, .06); cursor: pointer; }
+.rk-help-btn:hover { background: #f59e0b; }
+.rk-help-btn svg { width: 1.05rem; height: 1.05rem; }
+.rk-help { position: fixed; inset: 0; z-index: 60; }
+.rk-help-backdrop { position: absolute; inset: 0; background: rgba(28, 25, 23, .45); }
+.rk-help-panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(560px, 100vw); display: flex; flex-direction: column; background: var(--rk-card); color: var(--rk-ink);
+    box-shadow: -10px 0 30px rgba(0, 0, 0, .18); outline: none; }
+.rk-help-in { animation: rk-help-slide .18s ease-out; }
+.rk-help-out { animation: rk-help-slide .14s ease-in reverse; }
+@keyframes rk-help-slide { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.rk-help-head { position: relative; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1.1rem 1.25rem 1.3rem; color: #fff;
+    background: linear-gradient(120deg, #1c1917, #292524 60%, #3f2d1d); }
+.rk-help-head::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: repeating-linear-gradient(-45deg, #fbbf24 0 10px, #1c1917 10px 20px); }
+.rk-help-head h2 { font-size: 1.2rem; font-weight: 800; margin-top: .1rem; }
+.rk-help-eyebrow { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #fbbf24; }
+.rk-help-close { width: 2rem; height: 2rem; border-radius: 999px; color: #fff; background: rgba(255, 255, 255, .12); flex: none; }
+.rk-help-close:hover { background: rgba(255, 255, 255, .22); }
+.rk-help-body { flex: 1; overflow-y: auto; padding: 1.1rem 1.25rem 2rem; font-size: .9rem; line-height: 1.55; }
+.rk-help-body section, .rk-guide-body section { margin-top: 1.15rem; }
+.rk-help-body h3, .rk-guide-body h3 { font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--rk-teal); margin-bottom: .45rem;
+    padding-bottom: .3rem; border-bottom: 2px solid var(--rk-hazard); display: inline-block; }
+.rk-help-lead { font-size: .95rem; }
+.rk-help-phase { display: inline-flex; gap: .45rem; align-items: center; margin-top: .6rem; padding: .25rem .65rem; border-radius: 999px; font-size: .78rem; font-weight: 600;
+    background: var(--rk-teal-50); border: 1px solid rgba(212, 90, 6, .25); }
+.rk-help-phase span { font-weight: 800; color: var(--rk-teal); }
+.rk-help-shot { margin: 1rem 0 0; border: 1px solid var(--rk-line); border-radius: 12px; overflow: hidden; background: var(--rk-soft); }
+.rk-help-shot img { display: block; width: 100%; height: auto; }
+.rk-help-shot figcaption { padding: .5rem .75rem; font-size: .78rem; color: var(--rk-muted); border-top: 1px solid var(--rk-line); }
+.rk-help-shot figcaption span { display: inline-block; margin-left: .3rem; padding: 0 .4rem; border-radius: 4px; font-size: .68rem; font-weight: 800; color: #1c1917; background: #fbbf24; }
+.rk-help-concepts { display: grid; gap: .5rem; }
+.rk-help-concepts div { padding: .6rem .75rem; border-radius: 10px; background: var(--rk-soft); border-left: 4px solid var(--rk-teal); }
+.rk-help-concepts dt { font-weight: 800; }
+.rk-help-concepts dd { color: var(--rk-muted); margin-top: .1rem; }
+.rk-help-steps { counter-reset: rk-step; list-style: none; padding: 0; display: grid; gap: .45rem; }
+.rk-help-steps li { counter-increment: rk-step; position: relative; padding-left: 2.1rem; }
+.rk-help-steps li::before { content: counter(rk-step); position: absolute; left: 0; top: .05rem; width: 1.5rem; height: 1.5rem; border-radius: 6px; display: grid; place-content: center;
+    font-size: .75rem; font-weight: 800; color: #fbbf24; background: #1c1917; }
+.rk-help-fields { display: grid; gap: .6rem; }
+.rk-help-fields div { padding: .55rem .75rem; border: 1px solid var(--rk-line); border-radius: 10px; }
+.rk-help-fields dt { font-weight: 700; }
+.rk-help-fields dd { color: var(--rk-muted); }
+.rk-help-example { margin-top: .3rem; color: var(--rk-ink) !important; font-size: .84rem; }
+.rk-help-example span { display: inline-block; margin-right: .4rem; padding: 0 .4rem; border-radius: 4px; font-size: .66rem; font-weight: 800; text-transform: uppercase; color: #fff; background: var(--rk-teal); }
+.rk-help-tips { list-style: none; padding: 0; display: grid; gap: .4rem; }
+.rk-help-tips li { padding: .5rem .7rem .5rem 2rem; position: relative; border-radius: 10px; background: rgba(251, 191, 36, .12); }
+.rk-help-tips li::before { content: '!'; position: absolute; left: .65rem; top: .5rem; width: 1rem; height: 1rem; font-size: .7rem; font-weight: 900; display: grid; place-content: center;
+    color: #1c1917; background: #fbbf24; clip-path: polygon(50% 0, 100% 100%, 0 100%); padding-top: .2rem; }
+.rk-help-foot { margin-top: 1.5rem; padding-top: .8rem; border-top: 1px solid var(--rk-line); font-weight: 700; }
+.rk-help-foot a { color: var(--rk-teal); }
+
+.rk-guide { display: flex; flex-direction: column; gap: .8rem; max-width: 980px; }
+.rk-guide-intro { padding: 1rem 1.2rem; border-radius: var(--rk-radius); background: var(--rk-card); border: 1px solid var(--rk-line); border-left: 6px solid var(--rk-hazard); }
+.rk-guide-intro p + p { margin-top: .4rem; font-size: .85rem; }
+.rk-guide-toc { display: flex; flex-wrap: wrap; gap: .4rem; }
+.rk-guide-toc a { padding: .3rem .7rem; border-radius: 999px; font-size: .8rem; font-weight: 600; background: var(--rk-card); border: 1px solid var(--rk-line); }
+.rk-guide-toc a:hover { border-color: var(--rk-teal); color: var(--rk-teal); }
+.rk-guide-item { border-radius: var(--rk-radius); background: var(--rk-card); border: 1px solid var(--rk-line); box-shadow: var(--rk-shadow); scroll-margin-top: 5rem; }
+.rk-guide-item summary { display: flex; align-items: center; gap: .8rem; padding: .85rem 1.1rem; cursor: pointer; list-style: none; }
+.rk-guide-item summary::-webkit-details-marker { display: none; }
+.rk-guide-item summary small { display: block; font-size: .75rem; color: var(--rk-muted); }
+.rk-guide-no { width: 2rem; height: 2rem; flex: none; border-radius: 8px; display: grid; place-content: center; font-weight: 800; color: #fbbf24; background: #1c1917; }
+.rk-guide-item[open] summary { border-bottom: 1px solid var(--rk-line); }
+.rk-guide-body { padding: .3rem 1.2rem 1.3rem; font-size: .9rem; line-height: 1.55; }
+.rk-guide-body .rk-help-shot { max-width: 760px; }
+@media (max-width: 640px) { .rk-help-btn span { display: none; } .rk-help-btn { padding: .42rem; } }

@@ -53,7 +53,7 @@ class AnswerPrequalification extends EditRecord
                     .'Skor mandiri 0 sampai 4 membantu evaluator, tetapi skor akhir ditentukan evaluator owner. Butir bertanda <b>KRITIS</b> yang dinilai 0 membuat PQ gagal.'
                 )),
             ]),
-            Repeater::make('answers')->label('Butir kuesioner')->relationship('answers', fn ($q) => $q->with('item')->orderBy('id'))
+            Repeater::make('answers')->label('Butir kuesioner')->relationship('answers', fn ($query) => $query->with('item')->orderBy('id'))
                 ->addable(false)->deletable(false)->reorderable(false)->collapsible()
                 ->itemLabel(fn (array $state) => ($i = TemplateItem::find($state['template_item_id'] ?? null)) ? $i->code.' · '.$i->question.($i->is_critical ? '  [KRITIS]' : '') : null)
                 ->schema([
