@@ -39,13 +39,17 @@
     </div>
 
     <div class="rk-grid">
-        <section class="rk-panel">
+        <section class="rk-panel span-3">
             <h3>Perlu keputusan sekarang <small>diurutkan dari yang paling mendesak</small></h3>
-            @forelse ($d['decisions'] as [$level, $title, $detail])
-                <div class="rk-decision {{ $level }}"><b>{{ $title }}</b><p>{{ $detail }}</p></div>
-            @empty
+            @if ($d['decisions'])
+                <div class="rk-decisions">
+                    @foreach ($d['decisions'] as [$level, $title, $detail])
+                        <div class="rk-decision {{ $level }}"><b>{{ $title }}</b><p>{{ $detail }}</p></div>
+                    @endforeach
+                </div>
+            @else
                 <p class="rk-muted">Tidak ada yang perlu diputuskan hari ini.</p>
-            @endforelse
+            @endif
         </section>
 
         <section class="rk-panel span-2">
@@ -60,9 +64,19 @@
             ]) }}"></canvas></div>
         </section>
 
-        <section class="rk-panel span-2">
+        <section class="rk-panel">
+            <h3>Status prakualifikasi <small>{{ array_sum(array_column($d['pq_status'], 'value')) }} PQ</small></h3>
+            <div class="rk-chart h-300"><canvas data-rk-chart="{{ $chart([
+                'type' => 'doughnut',
+                'data' => ['labels' => array_column($d['pq_status'], 'label'), 'datasets' => [[
+                    'data' => array_column($d['pq_status'], 'value'), 'backgroundColor' => array_map(fn ($r) => $tone[$r['color']] ?? $c['gray'], $d['pq_status']),
+                ]]],
+                'options' => ['cutout' => '62%', 'plugins' => ['legend' => ['position' => 'bottom']]],
+            ]) }}"></canvas></div>
+        </section>
+        <section class="rk-panel span-3">
             <h3>Matriks keputusan rekanan <small>skor PQ vs LTIFR 3 tahun · ukuran = jam kerja · LTIFR di atas {{ $cfg['ltifr_alert'] * 6 }} digambar di tepi kanan</small></h3>
-            <div class="rk-chart h-320"><canvas data-rk-chart="{{ $chart([
+            <div class="rk-chart h-340"><canvas data-rk-chart="{{ $chart([
                 'type' => 'bubble',
                 'data' => ['datasets' => collect($d['matrix'])->groupBy('quadrant')->map(fn ($rows, $q) => [
                     'label' => $quadLabel[$q], 'data' => $rows->values()->all(), 'backgroundColor' => $quadColor[$q].'99', 'borderColor' => $quadColor[$q],
@@ -77,16 +91,6 @@
             ]) }}"></canvas></div>
         </section>
 
-        <section class="rk-panel">
-            <h3>Status prakualifikasi <small>{{ array_sum(array_column($d['pq_status'], 'value')) }} PQ</small></h3>
-            <div class="rk-chart h-320"><canvas data-rk-chart="{{ $chart([
-                'type' => 'doughnut',
-                'data' => ['labels' => array_column($d['pq_status'], 'label'), 'datasets' => [[
-                    'data' => array_column($d['pq_status'], 'value'), 'backgroundColor' => array_map(fn ($r) => $tone[$r['color']] ?? $c['gray'], $d['pq_status']),
-                ]]],
-                'options' => ['cutout' => '62%', 'plugins' => ['legend' => ['position' => 'bottom']]],
-            ]) }}"></canvas></div>
-        </section>
 
         <section class="rk-panel span-2">
             <h3>Skor PQ per rekanan <small>garis putus: ambang Rendah {{ $d['thresholds']['rendah'] }} · Menengah {{ $d['thresholds']['menengah'] }} · Tinggi {{ $d['thresholds']['tinggi'] }}</small></h3>
