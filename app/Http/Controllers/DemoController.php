@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Institution;
+use App\Models\Contractor;
+use App\Models\Owner;
 use App\Models\User;
+use Database\Seeders\GarudafoodDemoSeeder;
+use Database\Seeders\MedcoDemoSeeder;
+use Database\Seeders\PakuwonDemoSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -11,84 +15,74 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
-/**
- * Halaman publik (halaman depan dan "Akredia untuk Pimpinan Perguruan Tinggi") serta login tamu ke perguruan tinggi contoh.
- */
+/** Halaman depan publik dan login tamu (hanya lihat) ke tiga perusahaan contoh simulasi. */
 class DemoController extends Controller
 {
-    /** Urutan kartu di halaman login. */
-    public const ORDER = ['unj', 'uin-suka'];
-
-    /** Kartu perguruan tinggi contoh di halaman publik: nama, jenis dan jalur, skenario, akun pimpinan. */
+    /**
+     * Kartu data contoh: slug owner => [judul singkat, industri, cerita skenario, kelas seeder].
+     * Urutan array = urutan tampil.
+     */
     public const STORIES = [
-        'unj' => ['Universitas Negeri Jakarta', 'PTN Badan Hukum · jalur Unggul', 'AKI sekitar 75. Satu syarat perlu Unggul (proporsi lektor kepala dan guru besar) belum terpenuhi; SK berakhir Februari 2027.', 'rektor@unj.akredia.test'],
-        'uin-suka' => ['UIN Sunan Kalijaga Yogyakarta', 'PTN Akademik (PTKIN) · jalur Unggul', 'Persiapan dini reakreditasi dengan IAPT 4.1. Syarat perlu terpenuhi; tim memperkuat analisis capaian kelulusan dan bukti dampak riset sebelum unggah September 2027.', 'rektor@uin-suka.akredia.test'],
+        'garudafood-gresik' => ['Garudafood', 'Manufaktur pangan (pabrik biskuit)', '14 rekanan pabrik: overhaul oven, silo tepung, PLTS atap, sanitasi malam, forklift, kantin. Induksi GMP dan halal, uji gas ruang terbatas, rekanan gagal butir kritis BPJS.', GarudafoodDemoSeeder::class],
+        'medco-corridor' => ['MedcoEnergi', 'Hulu migas', 'Workover sumur, inspeksi separator, flowline. Kontingensi H2S, SIMOPS, well control, dan rekanan yang hanya layak risiko Menengah.', MedcoDemoSeeder::class],
+        'pakuwon-surabaya' => ['Pakuwon Jati', 'Properti dan konstruksi gedung', 'Proyek Pakuwon Mall Semarang, gondola fasad Tunjungan Plaza, ground tank. Tower crane, perancah, dan rekanan daftar hitam.', PakuwonDemoSeeder::class],
     ];
 
     public function home(): View
     {
-        return view('landing', [
-            'guestUrl' => self::guestUrl(),
-            'loginUrl' => self::loginUrl(),
-            'samples' => self::samples(),
-        ]);
+        return view('landing', ['samples' => self::samples(), 'loginUrl' => url('/app/login'), 'contractorLoginUrl' => url('/kontraktor/login')]);
     }
 
-    public function pimpinan(): View
-    {
-        return view('pimpinan.page', [
-            'guestUrl' => self::guestUrl(),
-            'loginUrl' => self::loginUrl(),
-            'samples' => self::samples(),
-        ]);
-    }
-
-    /** Penawaran workshop dua hari beserta materi lengkapnya. */
-    public function workshop(): View
-    {
-        return view('workshop', ['loginUrl' => self::loginUrl()]);
-    }
-
+    /** Masuk sebagai tamu ke owner contoh (?owner=slug), atau ke portal rekanan unggulannya (?sebagai=kontraktor). */
     public function guest(Request $request): RedirectResponse
     {
         $samples = self::samples();
         abort_if($samples->isEmpty(), 404);
 
-        $institution = $samples->firstWhere('slug', $request->query('pt')) ?? $samples->first();
+        $owner = $samples->firstWhere('slug', $request->query('owner')) ?? $samples->first();
+        $user = self::guestUser();
 
-        Auth::guard(Filament::getPanel('app')->getAuthGuard())->login(self::guestUser());
+        Auth::guard(Filament::getPanel('app')->getAuthGuard())->login($user);
         $request->session()->regenerate();
 
-        return redirect()->to(url('/app/'.$institution->slug));
+        if ($request->query('sebagai') === 'kontraktor' && $contractor = self::featuredContractor($owner)) {
+            return redirect()->to(url('/kontraktor/'.$contractor->slug));
+        }
+
+        return redirect()->to(url('/app/'.$owner->slug));
     }
 
-    public static function loginUrl(): string
+    public static function guestUrl(?string $slug = null, bool $asContractor = false): ?string
     {
-        return url('/app/login');
+        return self::samples()->isEmpty() ? null : route('demo.tamu', array_filter(['owner' => $slug, 'sebagai' => $asContractor ? 'kontraktor' : null]));
     }
 
-    /** Tautan "Masuk sebagai Tamu", atau null bila belum ada perguruan tinggi contoh untuk tamu. */
-    public static function guestUrl(?string $slug = null): ?string
-    {
-        return self::samples()->isEmpty() ? null : route('demo.tamu', array_filter(['pt' => $slug]));
-    }
-
-    /** @return Collection<int, Institution> perguruan tinggi contoh yang dapat dibuka akun tamu */
+    /** @return Collection<int, Owner> owner contoh yang dapat dibuka akun tamu, sesuai urutan STORIES */
     public static function samples(): Collection
     {
-        if (! config('akredia.demo.guest') || ! $user = self::guestUser()) {
+        if (! config('rekana.demo.guest') || ! $user = self::guestUser()) {
             return collect();
         }
 
+        $order = array_keys(self::STORIES);
+
         return $user->getTenants(Filament::getPanel('app'))->where('is_demo', true)
-            ->sortBy(fn (Institution $i) => array_search($i->slug, self::ORDER, true) === false ? 99 : array_search($i->slug, self::ORDER, true))
-            ->values();
+            ->sortBy(fn (Owner $o) => ($i = array_search($o->slug, $order, true)) === false ? 99 : $i)->values();
     }
 
-    /** Singkatan untuk pita tamu, misalnya "UNJ" atau "UIN SUKA". */
-    public static function shortName(Institution $institution): string
+    public static function story(Owner $owner): array
     {
-        return mb_strtoupper(str_replace('-', ' ', $institution->slug));
+        return self::STORIES[$owner->slug] ?? [$owner->name, $owner->industry, '', null];
+    }
+
+    public static function featuredContractor(Owner $owner): ?Contractor
+    {
+        $user = self::guestUser();
+        if (! $user) {
+            return null;
+        }
+
+        return $user->contractors()->whereHas('registrations', fn ($q) => $q->where('owner_id', $owner->id))->first();
     }
 
     protected static function guestUser(): ?User

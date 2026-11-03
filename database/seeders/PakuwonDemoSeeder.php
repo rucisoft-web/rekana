@@ -164,9 +164,9 @@ class PakuwonDemoSeeder extends DemoScenario
                 'induction' => 'Induksi K3 konstruksi · Proyek Pakuwon Mall Semarang', 'fail_index' => 7,
             ],
             'fasad' => [
-                'title' => 'Pembersihan fasad kaca Tunjungan Plaza dengan gondola', 'area' => 'ATP', 'mode' => ContractMode::Mode2,
-                'days' => 30, 'workers' => 3, 'value' => 640_000_000, 'flow' => 'contract', 'contractor' => 'gondola',
-                'number' => 'PWON/BM-TP/2026/044', 'start_offset' => -4, 'hse' => [4, 4, 4, 4, 4, 3], 'technical' => 82,
+                'title' => 'Pembersihan berkala fasad kaca Tunjungan Plaza dengan gondola', 'area' => 'ATP', 'mode' => ContractMode::Mode2,
+                'days' => 120, 'workers' => 3, 'value' => 640_000_000, 'flow' => 'contract', 'contractor' => 'gondola',
+                'number' => 'PWON/BM-TP/2026/044', 'start_offset' => -40, 'hse' => [4, 4, 4, 4, 4, 3], 'technical' => 82,
                 'lines' => [
                     ['Bekerja di gondola pada fasad gedung tinggi', 'ketinggian', 3, 5, 'Gondola riksa uji, lifeline independen, cek angin'],
                     ['Benda jatuh ke area pengunjung', 'lainnya', 2, 4, 'Barikade di bawah, kerja di luar jam buka'],

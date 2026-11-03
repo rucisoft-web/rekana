@@ -98,6 +98,12 @@ abstract class DemoScenario extends Seeder
         return ['k3_umum', 'bahaya_area', 'tanggap_darurat', 'apd', 'izin_kerja'];
     }
 
+    /** Rekanan yang portalnya dibuka akun tamu: rekanan kontrak pertama. */
+    public function featuredContractor(): string
+    {
+        return collect($this->planData())->firstWhere('flow', 'contract')['contractor'];
+    }
+
     public function run(): void
     {
         if (Owner::where('slug', static::slug())->exists()) {
@@ -118,6 +124,12 @@ abstract class DemoScenario extends Seeder
             $this->seedPrequalifications();
             $this->seedWork();
             $this->seedPermits();
+            $this->seedHistory();
+            $this->seedTimeline();
+
+            // Akun tamu juga dapat melihat portal kontraktor milik rekanan unggulan skenario ini (hanya lihat).
+            $guest = User::where('email', User::DEMO_GUEST_EMAIL)->first();
+            $this->contractors[$this->featuredContractor()]->users()->syncWithoutDetaching([$guest->id => ['role' => 'tamu', 'is_active' => true]]);
         });
 
         AuditLog::$enabled = true;
@@ -202,12 +214,15 @@ abstract class DemoScenario extends Seeder
     {
         $service = app(PrequalificationService::class);
 
-        foreach ($this->pqData() as $key => [$target, $base, $criticalZero, $stage]) {
+        foreach ($this->pqData() as $key => $row) {
+            // Kolom ke-5 opsional: setiap butir ke-n dikurangi satu, agar skor antarrekanan bervariasi.
+            [$target, $base, $criticalZero, $stage] = $row;
+            $weak = $row[4] ?? 0;
             $pq = $service->start($this->owner, $this->contractors[$key], $this->template, $target);
 
             foreach ($pq->answers()->with('item')->get() as $n => $answer) {
                 /** @var PqAnswer $answer */
-                $self = max(1, min(4, $base + ($n % 5 === 0 ? -1 : 0) + ($base < 4 && $n % 3 === 0 ? 1 : 0)));
+                $self = max(1, min(4, $base + ($n % 5 === 0 ? -1 : 0) + ($base < 4 && $n % 3 === 0 ? 1 : 0) - ($weak && $n % $weak === 1 ? 1 : 0)));
                 $answer->update(['answer' => 'Ya. '.$answer->item->evidence_hint.' terlampir dan ditinjau setiap tahun.', 'self_score' => $self]);
             }
 
@@ -366,9 +381,83 @@ abstract class DemoScenario extends Seeder
             }
 
             $service->submit($permit, $this->users['pemilik']);
-            if ($final === 'aktif') {
+            if (in_array($final, ['aktif', 'disetujui'], true)) {
                 $service->approve($permit->fresh(), $this->users['pengawas']);
+            }
+            if ($final === 'aktif') {
                 $service->activate($permit->fresh());
+            }
+        }
+    }
+
+    /**
+     * Riwayat izin kerja yang sudah selesai sejak kontrak dimulai, agar grafik tren di dasbor berisi.
+     * Jenis izin mengikuti bahaya pada penilaian risiko; pekerja diambil dari pemegang kartu aktif kontrak.
+     */
+    protected function seedHistory(): void
+    {
+        $map = [
+            'kerja_panas' => PermitType::KerjaPanas, 'ruang_terbatas' => PermitType::RuangTerbatas, 'ketinggian' => PermitType::Ketinggian,
+            'energi_tersimpan' => PermitType::Loto, 'listrik' => PermitType::Loto, 'kerja_sumur' => PermitType::Loto,
+        ];
+
+        foreach ($this->contracts as $contract) {
+            $types = $contract->workPlan->riskLines->map(fn (RiskLine $l) => $map[$l->hazard->value] ?? PermitType::Umum)->unique()->values();
+            $workerIds = $contract->accessCards()->usable()->pluck('worker_id')->all();
+            if ($types->isEmpty() || count($workerIds) < 2) {
+                continue;
+            }
+
+            for ($day = $contract->start_date->copy(); $day->lt(today()->subDay()); $day->addDay()) {
+                if ($day->isSunday()) {
+                    continue;
+                }
+                $count = crc32($contract->id.'-'.$day->toDateString()) % 3;
+                for ($k = 0; $k < $count; $k++) {
+                    $seed = crc32($contract->id.$day->toDateString().$k);
+                    /** @var PermitType $type */
+                    $type = $types[$seed % $types->count()];
+                    $start = $day->copy()->setTime(7 + ($k * 5), 0);
+                    $cancelled = $seed % 13 === 0;
+
+                    $permit = WorkPermit::create([
+                        'contract_id' => $contract->id, 'area_id' => $contract->workPlan->area_id, 'type' => $type,
+                        'title' => $type->getLabel().' · '.$contract->title, 'location_detail' => $contract->workPlan->area->name,
+                        'starts_at' => $start, 'ends_at' => $start->copy()->addHours(6),
+                        'checklist' => collect($type->checklist())->map(fn () => true)->all(),
+                        'gas_test' => $type->needsGasTest() ? ['o2' => 20.9, 'lel' => 0, 'h2s' => 0, 'co' => 1] : null,
+                        'isolation_points' => $type->needsIsolationPoints() ? 'Titik isolasi dikunci dan diberi tag sesuai daftar isolasi.' : null,
+                        'requested_by' => $this->users['pemilik']->id,
+                        'status' => $cancelled ? PermitStatus::Dibatalkan : PermitStatus::Ditutup,
+                        'approved_by' => $this->users['pengawas']->id, 'approved_at' => $start->copy()->subHour(),
+                        'activated_at' => $cancelled ? null : $start,
+                        'closed_by' => $cancelled ? null : $this->users['pengawas']->id, 'closed_at' => $cancelled ? null : $start->copy()->addHours(5),
+                        'close_notes' => $cancelled ? null : 'Pekerjaan selesai, area dirapikan.',
+                        'cancel_reason' => $cancelled ? 'Dibatalkan: kondisi cuaca atau uji gas tidak memenuhi syarat.' : null,
+                    ]);
+                    $permit->workers()->attach([$workerIds[$seed % count($workerIds)], $workerIds[($seed + 1) % count($workerIds)]]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Sebaran waktu agar dasbor menampilkan kondisi nyata: satu sertifikat mendekati masa berlaku,
+     * dan PQ yang menunggu sudah berumur beberapa hari.
+     */
+    protected function seedTimeline(): void
+    {
+        $approved = collect($this->pqData())->filter(fn ($row) => $row[3] === 'disetujui')->keys();
+        $last = $this->contractors[$approved->last()] ?? null;
+        if ($last) {
+            \App\Models\CsmsCertificate::where('contractor_id', $last->id)
+                ->update(['issued_at' => today()->subMonths(22)->subDays(10), 'valid_until' => today()->addMonths(2)->subDays(10)]);
+        }
+
+        foreach ($this->pqData() as $key => [, , , $stage]) {
+            if (in_array($stage, ['diajukan', 'klarifikasi'], true)) {
+                \App\Models\Prequalification::where('contractor_id', $this->contractors[$key]->id)
+                    ->update(['submitted_at' => now()->subDays($stage === 'diajukan' ? 9 : 16)]);
             }
         }
     }

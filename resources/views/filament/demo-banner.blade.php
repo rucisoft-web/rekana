@@ -1,11 +1,15 @@
 @php($tenant = filament()->getTenant())
 @if ($tenant?->is_demo)
-<div class="ak-demo-banner" role="note">
-    <span class="ak-demo-tag">DATA DEMO</span>
-    <span><b>{{ $tenant->name }}</b> di aplikasi ini disusun untuk menjelaskan fitur-fitur Akredia. Profil institusi diambil dari laman resminya; angka kinerja, nama staf, bukti, dan aktivitas adalah ilustrasi, bukan data resmi institusi.
-    @if (auth()->user()?->isDemoGuest())
-        Anda masuk sebagai <b>tamu (hanya lihat)</b>; ganti perguruan tinggi contoh dari pita di atas layar.
-    @endif
+<div class="rk-demo-banner" role="note">
+    <span class="rk-demo-tag">DATA SIMULASI</span>
+    <span><b>Seluruh data di layar ini adalah data contoh simulasi untuk keperluan demo software Rekana.</b>
+        @if ($tenant instanceof \App\Models\Owner)
+            {{ $tenant->settings['demo_note'] ?? 'Nama rekanan, staf, pekerja, skor, dan aktivitas adalah ilustrasi.' }}
+        @else
+            {{ $tenant->name }} adalah perusahaan rekaan; pekerja, dokumen, statistik K3, dan izin kerjanya disusun untuk menjelaskan fitur portal kontraktor.
+        @endif
+        Tidak ada data yang berasal dari sistem atau dokumen internal perusahaan mana pun.
+        @if (auth()->user()?->isDemoGuest()) Anda masuk sebagai <b>tamu (hanya lihat)</b>. @endif
     </span>
 </div>
 @endif

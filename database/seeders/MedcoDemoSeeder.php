@@ -151,9 +151,9 @@ class MedcoDemoSeeder extends DemoScenario
     {
         return [
             'workover' => [
-                'title' => 'Workover dan penggantian tubing sumur Suban', 'area' => 'SBN', 'mode' => ContractMode::Mode2,
-                'days' => 40, 'workers' => 18, 'value' => 9_850_000_000, 'flow' => 'contract', 'contractor' => 'swell',
-                'number' => 'MEPI/CRD/2026/0412', 'start_offset' => -10, 'hse' => [4, 4, 4, 3, 4, 4], 'technical' => 86,
+                'title' => 'Program workover dan penggantian tubing sumur Suban', 'area' => 'SBN', 'mode' => ContractMode::Mode2,
+                'days' => 120, 'workers' => 18, 'value' => 9_850_000_000, 'flow' => 'contract', 'contractor' => 'swell',
+                'number' => 'MEPI/CRD/2026/0412', 'start_offset' => -70, 'hse' => [4, 4, 4, 3, 4, 4], 'technical' => 86,
                 'lines' => [
                     ['Rig-up unit workover dan pemasangan BOP', 'kerja_sumur', 3, 5, 'BOP diuji tekan, driller bersertifikat IWCF'],
                     ['Membuka sumur dengan potensi gas H2S', 'h2s', 3, 5, 'Detektor H2S personal, SCBA, windsock, briefing arah angin'],
@@ -167,8 +167,8 @@ class MedcoDemoSeeder extends DemoScenario
             ],
             'ndt' => [
                 'title' => 'Inspeksi NDT dan internal separator Grissik Gas Plant', 'area' => 'GRS', 'mode' => ContractMode::Mode2,
-                'days' => 21, 'workers' => 4, 'value' => 1_240_000_000, 'flow' => 'contract', 'contractor' => 'andalas',
-                'number' => 'MEPI/CRD/2026/0398', 'start_offset' => -5, 'hse' => [4, 4, 4, 4, 3, 3], 'technical' => 84,
+                'days' => 60, 'workers' => 4, 'value' => 1_240_000_000, 'flow' => 'contract', 'contractor' => 'andalas',
+                'number' => 'MEPI/CRD/2026/0398', 'start_offset' => -35, 'hse' => [4, 4, 4, 4, 3, 3], 'technical' => 84,
                 'lines' => [
                     ['Masuk ke dalam separator V-101 untuk inspeksi visual', 'ruang_terbatas', 3, 5, 'Izin ruang terbatas, isolasi, uji gas, standby person'],
                     ['Radiografi sambungan las', 'bahan_kimia', 2, 4, 'Petugas proteksi radiasi, barikade radius aman'],

@@ -22,6 +22,14 @@ return [
         'certificate_years' => 2,
     ],
 
+    // Ambang dasbor monitoring: rekanan di atas ambang ditandai untuk ditinjau.
+    'dashboard' => [
+        'ltifr_alert' => 1.5,   // per 1.000.000 jam kerja; di atas 2x ambang = tinjau ulang
+        'trir_alert' => 3.0,    // per 200.000 jam kerja
+        'expiry_days' => 60,    // jendela peringatan sertifikat dan dokumen
+        'weeks' => 12,          // rentang tren izin kerja
+    ],
+
     // Rubrik penilaian HSE Plan saat seleksi; tiap kriteria dinilai 0-4.
     'hse_plan_rubric' => [
         'organisasi' => 'Organisasi dan tanggung jawab K3 proyek',
