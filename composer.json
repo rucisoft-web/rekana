@@ -1,12 +1,13 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "rucisoft/akredia",
+    "name": "rucisoft/rekana",
     "type": "project",
-    "description": "Akredia: persiapan akreditasi institusi perguruan tinggi (IAPT 4.1, BAN-PT).",
+    "description": "Rekana: sistem manajemen keselamatan kontraktor (CSMS) mengikuti IOGP 423.",
     "keywords": [
-        "akreditasi",
-        "ban-pt",
-        "iapt",
+        "csms",
+        "k3",
+        "contractor-safety",
+        "iogp-423",
         "laravel",
         "filament"
     ],
