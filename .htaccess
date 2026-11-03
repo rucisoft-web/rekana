@@ -1,0 +1,11 @@
+# Dipakai hanya bila document root mengarah ke folder program ini (bukan ke public/).
+# Semua permintaan diteruskan ke public/, sehingga .env, vendor, dan storage tidak
+# pernah disajikan langsung. Cara yang disarankan tetap: document root = rekana/public.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
