@@ -49,7 +49,7 @@ Akun contoh (kata sandi: `REKANA_DEMO_PASSWORD`, bawaan `Demo#2026rekana`):
 
 - Owner: `admin@`, `pimpinan@`, `pemilik@`, `pengadaan@`, `evaluator@`, `pengawas@`, `auditor@` diikuti domain owner, yaitu `garudafood.rekana.test`, `medco.rekana.test`, atau `pakuwon.rekana.test`.
 - Rekanan: `admin@<kode-rekanan>.<domain-owner>`, misalnya `admin@mesin.garudafood.rekana.test`.
-- Tamu (hanya lihat): tombol **Masuk sebagai tamu** di halaman depan atau login. Matikan dengan `REKANA_DEMO_GUEST=false`.
+- Tamu: tombol **Tamu sebagai Owner** dan **Tamu sebagai Kontraktor** di halaman depan dan halaman login. Tamu dapat membuka semua menu, formulir, dan tombol tindakan, tetapi setiap penyimpanan dihentikan dengan pemberitahuan "Mode tamu". Matikan dengan `REKANA_DEMO_GUEST=false`.
 
 Perintah terkait:
 

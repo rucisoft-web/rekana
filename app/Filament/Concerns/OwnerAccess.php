@@ -3,6 +3,7 @@
 namespace App\Filament\Concerns;
 
 use App\Enums\Role;
+use App\Support\GuestPreview;
 use App\Support\RuleViolation;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
@@ -15,20 +16,49 @@ trait OwnerAccess
 {
     public static function role(): ?Role
     {
-        return auth()->user()?->roleIn(filament()->getTenant());
+        // Tamu demo melihat tampilan Administrator agar semua tombol dapat dicoba (penyimpanan tetap dihentikan).
+        return GuestPreview::active() ? Role::Admin : auth()->user()?->roleIn(filament()->getTenant());
     }
 
-    public static function canWrite(): bool { return (bool) static::role()?->canWrite(); }
-    public static function canManage(): bool { return (bool) static::role()?->canManage(); }
+    public static function canWrite(): bool
+    {
+        return GuestPreview::active() || (bool) static::role()?->canWrite();
+    }
 
-    public static function canCreate(): bool { return static::canWrite(); }
-    public static function canEdit(Model $record): bool { return static::canWrite(); }
-    public static function canDelete(Model $record): bool { return static::canManage(); }
-    public static function canDeleteAny(): bool { return static::canManage(); }
+    public static function canManage(): bool
+    {
+        return GuestPreview::active() || (bool) static::role()?->canManage();
+    }
+
+    public static function canCreate(): bool
+    {
+        return static::canWrite();
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return static::canWrite();
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return static::canManage();
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return static::canManage();
+    }
 
     /** Jalankan aksi layanan; tampilkan alasan bila aturan dilanggar. */
     public static function rule(callable $fn, string $success): mixed
     {
+        if (GuestPreview::active()) {
+            GuestPreview::notify();
+
+            return null;
+        }
+
         try {
             $result = $fn();
             Notification::make()->success()->title($success)->send();

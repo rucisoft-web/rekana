@@ -78,6 +78,7 @@ class KontraktorPanelProvider extends PanelProvider
                 .'<script src="'.$asset('js/rekana.js').'" defer></script>'
             ))
             ->renderHook(PanelsRenderHook::FOOTER, fn () => view('filament.footer'))
+            ->renderHook(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER, fn () => view('filament.login-links'))
             ->renderHook(PanelsRenderHook::USER_MENU_BEFORE, fn () => view('filament.help.button'))
             ->renderHook(PanelsRenderHook::BODY_END, fn () => auth()->check() ? view('filament.help.panel') : '')
             ->renderHook(PanelsRenderHook::BODY_START, fn () => view('filament.guest-ribbon'))

@@ -192,7 +192,7 @@ Isi `REKANA_DEMO=true`, lalu jalankan `php artisan rekana:demo` dan `php artisan
 
 Akun owner: `admin@garudafood.rekana.test`, `pimpinan@…`, `evaluator@…`, `pengawas@…`, dan seterusnya. Akun rekanan: `admin@<kode>.<domain-owner>`, misalnya `admin@mesin.garudafood.rekana.test`. Kata sandi semua akun: nilai `REKANA_DEMO_PASSWORD` (bawaan `Demo#2026rekana`).
 
-Halaman depan `https://domain-anda/` menjelaskan Rekana dan menampilkan tombol **Masuk sebagai tamu** untuk tiap owner contoh, sebagai owner maupun sebagai rekanan (akun bersama `tamu@demo.rekana.test`, hanya lihat). Matikan pilihan tamu dengan `REKANA_DEMO_GUEST=false`. Semua layar dan cetakan owner contoh berlabel **DATA SIMULASI**.
+Halaman depan `https://domain-anda/` menjelaskan Rekana dan menampilkan tombol **Tamu sebagai Owner** dan **Tamu sebagai Kontraktor** (juga di halaman login). Tamu memakai akun bersama `tamu@demo.rekana.test`, dapat membuka semua menu, formulir, dan tombol tindakan, tetapi perubahan tidak disimpan. Matikan pilihan tamu dengan `REKANA_DEMO_GUEST=false`. Semua layar dan cetakan owner contoh berlabel **DATA SIMULASI**.
 
 Muat ulang satu owner dengan `php artisan rekana:demo garudafood-gresik --force`. Hapus semua data contoh kapan saja dengan `php artisan rekana:remove-demo --force`.
 

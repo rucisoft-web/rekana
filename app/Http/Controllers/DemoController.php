@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
-/** Halaman depan publik dan login tamu (hanya lihat) ke tiga perusahaan contoh simulasi. */
+/** Halaman depan publik dan login tamu (pratinjau tanpa menyimpan) ke tiga perusahaan contoh simulasi. */
 class DemoController extends Controller
 {
     /**

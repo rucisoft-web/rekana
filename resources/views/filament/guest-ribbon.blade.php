@@ -2,7 +2,7 @@
 @if (auth()->user()?->isDemoGuest())
     @php($samples = \App\Http\Controllers\DemoController::samples())
     <div class="rk-guest-ribbon" role="navigation" aria-label="Data contoh simulasi">
-        <span><b>Mode tamu · hanya lihat · data simulasi</b></span>
+        <span><b>Mode tamu · coba tanpa menyimpan · data simulasi</b></span>
         <span>Perusahaan contoh:</span>
         @foreach ($samples as $o)
             <a href="{{ url('/app/'.$o->slug) }}" @class(['is-active' => $tenant?->is($o)])>{{ \App\Http\Controllers\DemoController::story($o)[0] }}</a>

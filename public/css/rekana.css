@@ -77,7 +77,14 @@
 .rk-login-card { display: block; padding: .6rem .75rem; border: 1px solid rgba(148, 163, 184, .4); border-radius: .7rem; cursor: pointer; }
 .rk-login-card input { margin-right: .4rem; }
 .rk-login-card small { display: block; color: #64748b; margin-left: 1.3rem; }
-.rk-login-guest { width: 100%; padding: .6rem; border-radius: .6rem; background: #1c1917; border-bottom: 3px solid #fbbf24; color: #fff; font-weight: 700; }
+.rk-login-guests { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.rk-login-guest { width: 100%; padding: .65rem .6rem; border-radius: .6rem; background: #1c1917; border-bottom: 3px solid #fbbf24; color: #fff; text-align: left; line-height: 1.25; }
+.rk-login-guest b { display: block; font-size: .85rem; }
+.rk-login-guest small { display: block; margin-top: .2rem; font-size: .7rem; color: #d6d3d1; font-weight: 400; }
+.rk-login-guest.alt { background: #d45a06; border-bottom-color: #1c1917; }
+.rk-login-guest.alt small { color: #ffedd5; }
+.rk-login-hint { margin-top: .45rem; font-size: .74rem; color: #64748b; text-align: center; }
+@media (max-width: 420px) { .rk-login-guests { grid-template-columns: 1fr; } }
 .rk-login-note { font-size: .74rem; color: #9a3412; background: #fff7ed; border: 1px solid #fed7aa; border-radius: .6rem; padding: .5rem .65rem; margin-top: .6rem; }
 .rk-login-home { display: block; text-align: center; margin-top: .75rem; color: #d45a06; font-weight: 600; }
 

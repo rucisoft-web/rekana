@@ -23,7 +23,7 @@
         </nav>
         <div class="nav-cta">
             <a href="{{ $loginUrl }}" class="btn ghost">Masuk</a>
-            @if ($guest)<a href="#demo" class="btn primary">Coba sebagai tamu</a>@endif
+            @if ($guest)<a href="{{ DemoController::guestUrl() }}" class="btn primary">Coba sebagai tamu</a>@endif
         </div>
     </div>
 </header>
@@ -35,9 +35,14 @@
             <h1>Setiap kontraktor yang masuk lokasi Anda harus <em>layak</em>, <em>kompeten</em>, dan <em>terkendali</em>.</h1>
             <p class="lead">Rekana mengelola keselamatan kontraktor dari hulu ke hilir: menilai risiko pekerjaan, menyaring rekanan lewat prakualifikasi, memilih pemenang dengan HSE Plan, membuka gerbang hanya bagi pekerja yang lolos induksi, menjalankan izin kerja digital, dan menilai kinerja secara berkelanjutan.</p>
             <div class="hero-cta">
-                @if ($guest)<a href="#demo" class="btn primary lg">Lihat demo tanpa akun</a>@endif
-                <a href="#solusi" class="btn ghost lg">Pelajari cara kerjanya</a>
+                @if ($guest)
+                    <a href="{{ DemoController::guestUrl() }}" class="btn primary lg">Tamu sebagai Owner</a>
+                    <a href="{{ DemoController::guestUrl(null, true) }}" class="btn dark lg">Tamu sebagai Kontraktor</a>
+                @else
+                    <a href="#solusi" class="btn ghost lg">Pelajari cara kerjanya</a>
+                @endif
             </div>
+            @if ($guest)<p class="hero-note">Tanpa akun. Tamu dapat membuka semua menu, formulir, dan tombol tindakan owner maupun kontraktor dengan data simulasi; perubahan tidak disimpan.</p>@endif
             <ul class="hero-points">
                 <li>Enam tahap IOGP 423 dalam satu alur</li>
                 <li>Portal kontraktor gratis</li>
@@ -138,7 +143,7 @@
     <div class="wrap">
         <span class="kicker">05 · Coba sekarang</span>
         <h2>Pilih salah satu dari tiga data demo</h2>
-        <p class="sub">Masuk sebagai tamu (hanya lihat) tanpa membuat akun. Anda dapat melihat dasbor dari sisi perusahaan pemberi kerja maupun dari sisi kontraktor.</p>
+        <p class="sub">Masuk sebagai tamu tanpa membuat akun. Pilih sisi perusahaan pemberi kerja (owner) atau sisi kontraktor; semua menu, formulir, dan tombol tindakan dapat dicoba, tetapi perubahan tidak disimpan.</p>
         <div class="disclaimer"><span>DATA SIMULASI</span><p><b>Seluruh data demo adalah data contoh simulasi untuk keperluan demo software Rekana.</b> Profil perusahaan (nama, lokasi, dan bidang usaha) diambil dari laporan tahunan yang dipublikasikan. Nama rekanan, staf, pekerja, skor, statistik K3, dan seluruh aktivitas adalah rekaan dan tidak berasal dari sistem atau dokumen internal perusahaan tersebut. Demo ini tidak menyiratkan hubungan kerja sama dengan perusahaan mana pun.</p></div>
         <div class="demos">
             @forelse ($samples as $o)
@@ -149,9 +154,9 @@
                     <small>{{ $industry }}</small>
                     <p>{{ $story }}</p>
                     <div class="demo-cta">
-                        <a class="btn primary" href="{{ DemoController::guestUrl($o->slug) }}">Masuk sebagai tamu</a>
+                        <a class="btn primary" href="{{ DemoController::guestUrl($o->slug) }}">Tamu sebagai Owner</a>
                         @if ($c = DemoController::featuredContractor($o))
-                            <a class="btn ghost" href="{{ DemoController::guestUrl($o->slug, true) }}">Lihat sebagai kontraktor</a>
+                            <a class="btn ghost" href="{{ DemoController::guestUrl($o->slug, true) }}">Tamu sebagai Kontraktor</a>
                         @endif
                     </div>
                 </article>
